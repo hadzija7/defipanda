@@ -1,0 +1,12 @@
+---
+description: Read related spec before coding
+globs:
+  - web/**
+  - cre/**
+---
+
+Before editing implementation files, read:
+- `docs/architecture.md`
+- The related file in `specs/`
+
+If no spec exists, create or extend the nearest stub first.

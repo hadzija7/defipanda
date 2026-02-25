@@ -1,0 +1,10 @@
+---
+description: Update docs/specs after implementation
+alwaysApply: true
+---
+
+After implementation changes:
+1. Update `TODO.md` progress.
+2. Update relevant files under `specs/`.
+3. Update `docs/quality.md` if quality posture changed.
+4. If architecture changed, update `docs/architecture.md`.

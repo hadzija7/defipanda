@@ -1,0 +1,7 @@
+---
+description: Persist plans and reports to repository
+alwaysApply: true
+---
+
+When generating meaningful artifacts (plans, reports, specs, checklists),
+write them to project files under `docs/`, `specs/`, or `.agents/workflows/`.
