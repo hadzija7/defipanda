@@ -3,6 +3,7 @@
 ## Phase 1 - Architecture Baseline
 - [x] Create initial architecture map
 - [x] Create agent workflow scaffold and rules
+- [x] Add local web-to-CRE simulation bridge for end-to-end test flow
 - [ ] Confirm system boundaries (web vs CRE vs monitoring)
 - [ ] Confirm persistence approach for strategy state
 

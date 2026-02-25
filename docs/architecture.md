@@ -22,10 +22,16 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 5. Web app surfaces status and recent execution outcomes.
 
 ## Current Directory Map
-- `web/`: Next.js app (separate git repo appears initialized inside this folder).
+- `web/`: Next.js app and server-side API bridge for local CRE simulation.
 - `cre/`: CRE project files and `dca-workflow/` implementation.
 - `docs/`: project docs and architecture decisions.
 - `specs/`: evolving system specs and testing strategy.
+
+## Current Local Test Bridge
+- Endpoint: `POST /api/cre/simulate` in `web/`.
+- Execution path: frontend button -> Next.js server route -> `cre workflow simulate`.
+- Working directory for CLI execution: `../cre` (from the `web/` app).
+- Safety: route is blocked in production unless `ALLOW_CRE_SIMULATE=true`.
 
 ## Tech Stack (Current)
 - Frontend: Next.js

@@ -30,8 +30,8 @@
 5. Update docs/spec statuses and quality grades before closing work.
 
 ## Commands (to refine)
-- Web install: `cd web && npm install`
-- Web dev: `cd web && npm run dev`
+- Web install: `cd web && pnpm install`
+- Web dev: `cd web && pnpm dev`
 - CRE workflow run: `cd cre/dca-workflow && npm run start`
 
 ## Environment Notes
