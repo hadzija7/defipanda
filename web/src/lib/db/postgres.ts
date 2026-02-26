@@ -78,7 +78,10 @@ async function initializeSchema(): Promise<void> {
 
 export async function ensureDatabaseReady(): Promise<void> {
   if (!initPromise) {
-    initPromise = initializeSchema();
+    initPromise = initializeSchema().catch((error) => {
+      initPromise = null;
+      throw error;
+    });
   }
   await initPromise;
 }

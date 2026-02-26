@@ -37,6 +37,7 @@ Status: In Progress
   - User record (`sub -> profile fields`).
 - Cookies are HTTP-only, same-site lax, and signed with `AUTH_SESSION_SECRET`.
 - Current implementation bootstraps tables at runtime if missing.
+- Transient bootstrap/discovery failures are retryable: failed first attempts do not poison long-lived process state.
 
 ## Existing CRE Test Flow
 - Page: `web/src/app/page.tsx`
@@ -59,3 +60,6 @@ Status: In Progress
 
 ## Current Auth Test Coverage
 - Unit tests for redirect target sanitization in `web/src/lib/auth/return-to.test.ts`.
+- Unit tests for retry behavior after transient failures in:
+  - `web/src/lib/db/postgres.test.ts`
+  - `web/src/lib/auth/google-oidc.test.ts`

@@ -24,7 +24,10 @@ function getGoogleClientSecret(): string {
 
 async function getOidcConfig(): Promise<oidc.Configuration> {
   if (!oidcConfigPromise) {
-    oidcConfigPromise = oidc.discovery(GOOGLE_ISSUER, getGoogleClientId(), getGoogleClientSecret());
+    oidcConfigPromise = oidc.discovery(GOOGLE_ISSUER, getGoogleClientId(), getGoogleClientSecret()).catch((error) => {
+      oidcConfigPromise = null;
+      throw error;
+    });
   }
   return oidcConfigPromise;
 }

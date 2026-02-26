@@ -1,6 +1,6 @@
 # Quality Scorecard
 
-Last Updated: 2026-02-25
+Last Updated: 2026-02-26
 
 ## Domain Status
 | Domain | Spec | Code | Tests | Review | Overall |
@@ -21,5 +21,5 @@ Last Updated: 2026-02-25
 ## Known Gaps
 - No finalized persistence model for strategy state.
 - No explicit monitoring stack or alert routing.
-- Automated tests are still minimal (currently focused on auth redirect sanitization).
+- Automated tests are still minimal (currently focused on auth redirect sanitization and transient init retry behavior).
 - Auth schema is currently initialized at runtime; dedicated migration workflow is still pending.
