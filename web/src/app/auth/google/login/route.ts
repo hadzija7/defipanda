@@ -7,6 +7,7 @@ import {
   createState,
   getAppBaseUrl,
 } from "@/lib/auth/google-oidc";
+import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import { createOAuthFlowSession, OAUTH_FLOW_COOKIE_NAME } from "@/lib/auth/store";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   const codeVerifier = createCodeVerifier();
 
   const returnToParam = request.nextUrl.searchParams.get("returnTo");
-  const returnTo = returnToParam?.startsWith("/") ? returnToParam : "/";
+  const returnTo = sanitizeReturnTo(returnToParam);
 
   const oauthFlow = await createOAuthFlowSession({
     state,

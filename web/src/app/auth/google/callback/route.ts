@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { exchangeGoogleCodeForIdentity, getAppBaseUrl } from "@/lib/auth/google-oidc";
+import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import {
   APP_SESSION_COOKIE_NAME,
   createAppSession,
@@ -63,8 +64,9 @@ export async function GET(request: NextRequest) {
 
     const user = await upsertGoogleUser(identity);
     const appSession = await createAppSession(user.sub);
+    const safeReturnTo = sanitizeReturnTo(flowSession.returnTo);
 
-    const response = redirectToApp(request, flowSession.returnTo || "/");
+    const response = redirectToApp(request, safeReturnTo);
     clearOAuthFlowCookie(response);
     response.cookies.set({
       name: APP_SESSION_COOKIE_NAME,

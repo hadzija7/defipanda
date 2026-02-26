@@ -17,11 +17,13 @@ Status: In Progress
 - `GET /auth/google/login`
   - Generates PKCE verifier/challenge, state, and nonce.
   - Stores auth flow context in server session store keyed by signed cookie.
+  - Sanitizes `returnTo` to same-origin relative paths only (blocks protocol-relative/absolute redirects).
   - Redirects to Google authorization endpoint.
 - `GET /auth/google/callback`
   - Validates state against stored flow session.
   - Exchanges authorization code for tokens.
   - Validates ID token claims and upserts user by `sub`.
+  - Re-sanitizes stored `returnTo` before final app redirect as defense-in-depth.
   - Issues app session cookie and redirects back to app.
 - `POST /auth/logout`
   - Invalidates app session and clears app session cookie.
@@ -54,3 +56,6 @@ Status: In Progress
 ## Out of Scope for This Phase
 - Wallet creation, session-key issuance, or policy binding.
 - Role-based authorization and admin access control.
+
+## Current Auth Test Coverage
+- Unit tests for redirect target sanitization in `web/src/lib/auth/return-to.test.ts`.

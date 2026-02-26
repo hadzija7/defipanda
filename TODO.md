@@ -18,3 +18,4 @@
 - [ ] Update `docs/quality.md` based on evidence
 - [x] Implement Phase 1 Google OAuth2/OIDC login flow in `web/` (no wallet creation yet)
 - [x] Add PostgreSQL-backed auth/session persistence for web OAuth flow
+- [x] Harden OAuth `returnTo` redirect handling to prevent open redirects + add unit tests
