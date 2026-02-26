@@ -12,7 +12,7 @@ Last Updated: 2026-02-25
 ## Cross-Cutting Layers
 | Layer | Grade | Notes |
 |---|---|---|
-| Security | D | Sensitive files exist; policy/process still informal |
+| Security | C | Google OIDC code+PKCE flow with signed session cookies; users/sessions are now persisted in PostgreSQL |
 | Observability | F | Monitoring architecture not finalized |
 | Performance | F | No baseline measurements yet |
 | CI/CD | F | Pipeline not documented yet |
@@ -22,3 +22,4 @@ Last Updated: 2026-02-25
 - No finalized persistence model for strategy state.
 - No explicit monitoring stack or alert routing.
 - No automated tests defined for web or workflow execution paths.
+- Auth schema is currently initialized at runtime; dedicated migration workflow is still pending.

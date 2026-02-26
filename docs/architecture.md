@@ -6,7 +6,7 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 ## Confirmed Systems
 1. **Web App (`web/`)**
    - Next.js user interface.
-   - Primary responsibilities: strategy setup, status display, operator controls.
+   - Primary responsibilities: strategy setup, status display, operator controls, and user authentication session handling.
 2. **CRE Workflows (`cre/`)**
    - Workflow and config files for DCA execution.
    - Primary responsibilities: schedule/trigger logic, execution orchestration, environment-specific config.
@@ -32,6 +32,16 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 - Execution path: frontend button -> Next.js server route -> `cre workflow simulate`.
 - Working directory for CLI execution: `../cre` (from the `web/` app).
 - Safety: route is blocked in production unless `ALLOW_CRE_SIMULATE=true`.
+
+## Current Auth Bridge (Phase 1)
+- Endpoints:
+  - `GET /auth/google/login`
+  - `GET /auth/google/callback`
+  - `POST /auth/logout`
+  - `GET /auth/me`
+- Protocol: Google OIDC Authorization Code Flow with PKCE, server-side token exchange.
+- Identity key: Google `sub` claim.
+- Persistence: PostgreSQL-backed user/session/auth-flow tables.
 
 ## Tech Stack (Current)
 - Frontend: Next.js
