@@ -36,6 +36,7 @@ Status: In Progress
   - App session (`sessionId -> userSub`).
   - User record (`sub -> profile fields`).
 - Cookies are HTTP-only, same-site lax, and signed with `AUTH_SESSION_SECRET`.
+- Signed cookie HMAC verification uses constant-time digest comparison to reduce timing side-channel exposure.
 - Current implementation bootstraps tables at runtime if missing.
 - Transient bootstrap/discovery failures are retryable: failed first attempts do not poison long-lived process state.
 

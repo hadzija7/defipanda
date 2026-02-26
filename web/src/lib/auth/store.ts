@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { query } from "@/lib/db/postgres";
 
@@ -58,7 +58,11 @@ function unsign(signedValue: string): string | null {
   const providedDigest = signedValue.slice(separator + 1);
   const expectedDigest = createHmac("sha256", getCookieSecret()).update(value).digest("base64url");
 
-  return providedDigest === expectedDigest ? value : null;
+  const providedDigestBuffer = Buffer.from(providedDigest, "utf8");
+  const expectedDigestBuffer = Buffer.from(expectedDigest, "utf8");
+  if (providedDigestBuffer.length !== expectedDigestBuffer.length) return null;
+
+  return timingSafeEqual(providedDigestBuffer, expectedDigestBuffer) ? value : null;
 }
 
 function now(): number {

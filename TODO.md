@@ -20,3 +20,4 @@
 - [x] Add PostgreSQL-backed auth/session persistence for web OAuth flow
 - [x] Harden OAuth `returnTo` redirect handling to prevent open redirects + add unit tests
 - [x] Fix one-time init cache poisoning in DB schema/OIDC discovery (retry after transient startup failures)
+- [x] Use constant-time HMAC digest verification for signed auth cookies (`timingSafeEqual`) to avoid timing side-channel leaks
