@@ -1,6 +1,6 @@
 # Quality Scorecard
 
-Last Updated: 2026-02-25
+Last Updated: 2026-02-26
 
 ## Domain Status
 | Domain | Spec | Code | Tests | Review | Overall |
@@ -12,7 +12,7 @@ Last Updated: 2026-02-25
 ## Cross-Cutting Layers
 | Layer | Grade | Notes |
 |---|---|---|
-| Security | D | Sensitive files exist; policy/process still informal |
+| Security | C | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering |
 | Observability | F | Monitoring architecture not finalized |
 | Performance | F | No baseline measurements yet |
 | CI/CD | F | Pipeline not documented yet |
@@ -21,4 +21,5 @@ Last Updated: 2026-02-25
 ## Known Gaps
 - No finalized persistence model for strategy state.
 - No explicit monitoring stack or alert routing.
-- No automated tests defined for web or workflow execution paths.
+- Automated tests are still minimal (currently focused on auth redirect sanitization and transient init retry behavior).
+- Auth schema is currently initialized at runtime; dedicated migration workflow is still pending.

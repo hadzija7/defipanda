@@ -16,3 +16,10 @@
 - [ ] Pick one end-to-end vertical slice (UI -> CRE -> status visibility)
 - [ ] Implement and verify with tests
 - [ ] Update `docs/quality.md` based on evidence
+- [x] Implement Phase 1 Google OAuth2/OIDC login flow in `web/` (no wallet creation yet)
+- [x] Add PostgreSQL-backed auth/session persistence for web OAuth flow
+- [x] Harden OAuth `returnTo` redirect handling to prevent open redirects + add unit tests
+- [x] Close tab-normalization open-redirect gap in OAuth `returnTo` sanitization (`\t` bypass)
+- [x] Fix one-time init cache poisoning in DB schema/OIDC discovery (retry after transient startup failures)
+- [x] Use constant-time HMAC digest verification for signed auth cookies (`timingSafeEqual`) to avoid timing side-channel leaks
+- [x] Add PostgreSQL pool idle-client `error` listener to prevent unhandled EventEmitter crashes on transient DB/backend failures

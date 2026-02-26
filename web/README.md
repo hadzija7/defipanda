@@ -20,6 +20,36 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Google OAuth (Phase 1)
+
+### Required Environment Variables
+
+Set these in your local environment before testing login:
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `AUTH_SESSION_SECRET` (required in production, strongly recommended in development)
+- `DATABASE_URL` (required)
+
+Optional:
+
+- `DATABASE_SSL` (`true` when your provider requires SSL)
+- `APP_BASE_URL` (defaults to request origin)
+- `ALLOW_CRE_SIMULATE` (existing CRE simulation production safety switch)
+
+### Auth Endpoints
+
+- `GET /auth/google/login`
+- `GET /auth/google/callback`
+- `POST /auth/logout`
+- `GET /auth/me`
+
+Implementation notes:
+
+- Protocol: OIDC Authorization Code Flow with PKCE.
+- Auth users/sessions are persisted in PostgreSQL.
+- Wallet creation is intentionally out of scope for this phase.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
