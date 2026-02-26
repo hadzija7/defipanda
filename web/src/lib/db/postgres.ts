@@ -22,6 +22,9 @@ function getPool(): Pool {
       connectionString: requireDatabaseUrl(),
       ssl: shouldUseSsl() ? { rejectUnauthorized: false } : undefined,
     });
+    pool.on("error", (error) => {
+      console.error("Unexpected error on idle PostgreSQL client", error);
+    });
   }
   return pool;
 }

@@ -21,6 +21,7 @@ describe("sanitizeReturnTo", () => {
 
   it("falls back for slash/control-character tricks", () => {
     expect(sanitizeReturnTo("/\\evil.com")).toBe("/");
+    expect(sanitizeReturnTo("/\t/evil.com")).toBe("/");
     expect(sanitizeReturnTo("/safe\nheader:inject")).toBe("/");
   });
 

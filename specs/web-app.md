@@ -17,7 +17,7 @@ Status: In Progress
 - `GET /auth/google/login`
   - Generates PKCE verifier/challenge, state, and nonce.
   - Stores auth flow context in server session store keyed by signed cookie.
-  - Sanitizes `returnTo` to same-origin relative paths only (blocks protocol-relative/absolute redirects).
+  - Sanitizes `returnTo` to same-origin relative paths only (blocks protocol-relative/absolute redirects and slash/control-char normalization tricks, including tab/newline/carriage-return removal by URL parsing).
   - Redirects to Google authorization endpoint.
 - `GET /auth/google/callback`
   - Validates state against stored flow session.
@@ -39,6 +39,7 @@ Status: In Progress
 - Signed cookie HMAC verification uses constant-time digest comparison to reduce timing side-channel exposure.
 - Current implementation bootstraps tables at runtime if missing.
 - Transient bootstrap/discovery failures are retryable: failed first attempts do not poison long-lived process state.
+- PostgreSQL pool registers an explicit idle-client `error` listener to avoid process crashes on backend restarts/network interruptions.
 
 ## Existing CRE Test Flow
 - Page: `web/src/app/page.tsx`

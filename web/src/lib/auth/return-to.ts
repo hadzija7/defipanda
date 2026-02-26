@@ -11,8 +11,9 @@ export function sanitizeReturnTo(input: string | null | undefined): string {
     return DEFAULT_RETURN_TO;
   }
 
-  // Block alternate slash/control-character tricks.
-  if (input.includes("\\") || input.includes("\r") || input.includes("\n")) {
+  // Block alternate slash/control-character tricks. Tabs must also be blocked
+  // because the URL parser strips them before host resolution.
+  if (input.includes("\\") || input.includes("\t") || input.includes("\r") || input.includes("\n")) {
     return DEFAULT_RETURN_TO;
   }
 
