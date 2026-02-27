@@ -6,9 +6,15 @@ This folder tracks implementation intent and verification status.
 | Spec | Status | Verified | Notes |
 |---|---|---|---|
 | `specs/testing-strategy.md` | Draft | No | Baseline approach only |
-| `specs/web-app.md` | Planned | No | To define data model and key UI flows |
-| `specs/cre-workflows.md` | Planned | No | To define runtime behavior and failure handling |
+| `specs/web-app.md` | In Progress | Partial | Auth (Stages 1-5), Rhinestone, Reown AppKit documented |
+| `specs/cre-workflows.md` | In Progress | No | Smart trigger + backend executor pattern, capabilities, config schema |
 | `specs/monitoring.md` | Planned | No | To define telemetry, alerts, and SLOs |
+
+## Planning Artifacts
+| Plan | Status | Location |
+|---|---|---|
+| Phase 9: DCA Execution Pipeline | Planned | `docs/plans/active/phase9-dca-execution-pipeline.md` |
+| ZeroDev Auth Stage 2 | Implemented | `docs/plans/active/zerodev-auth-stage2-plan.md` |
 
 ## Update Rule
 When behavior changes, update the relevant spec in the same task.
