@@ -146,3 +146,197 @@ Status: Implemented
 - `web/src/app/auth/google/callback/route.ts` - Stage 2 provisioning hook
 - `web/src/app/auth/me/route.ts` - Wallet status in profile response
 - `docs/runbooks/zerodev-smart-account-setup.md` - Operations runbook
+
+## Stage 3: Modular Auth Provider Selection (Full Architecture)
+Status: Implemented
+
+### Goals
+- Make auth provider switchable without rewriting route-level behavior.
+- Preserve existing Google OIDC server session flow as default.
+- Add ZeroDev social login integration path for provider-level modularity and UX validation.
+- Create a hybrid orchestration model: server routes for server-capable providers, client adapters for client-only flows.
+- Separate auth provider and smart account provider concerns into independent planes.
+- Prepare extension points for future providers (WalletConnect).
+
+### Provider Architecture
+
+#### Dual-Plane Provider Model
+The architecture separates two independent provider planes:
+1. **Auth Providers** - Handle identity/session bootstrapping
+2. **Smart Account Providers** - Handle provisioning and UserOp execution
+
+Each plane has:
+- Provider interface contract (`IAuthProviderAdapter`, `ISmartAccountProviderAdapter`)
+- Registry for adapter registration and lookup
+- Facade for unified consumer API (`AuthFacade`, `SmartAccountFacade`)
+- Setup module for automatic adapter registration
+
+#### Hybrid Orchestration
+- Server routes serve as the canonical entrypoint for provider metadata and server-capable flows
+- Client-side adapters handle providers requiring browser SDK orchestration
+- Provider capabilities define which orchestration path applies:
+  - `serverSession: true` → Server-side auth flow
+  - `clientSideLogin: true` → Client-side SDK initiation
+  - `unifiedWalletAuth: true` → Auth provider also manages wallet creation (no separate provisioning needed)
+
+#### Unified Wallet Auth
+Providers with `unifiedWalletAuth: true` handle both authentication AND smart account creation in a single client-side flow:
+- The auth SDK creates/connects to a smart account as part of login
+- No separate server-side provisioning is needed
+- Wallet address is computed deterministically by the SDK
+- The auth provider specifies its `linkedSmartAccountProvider` to identify which wallet provider to use for UserOp operations
+
+### Environment Contract
+- `AUTH_PROVIDER`:
+  - `google_oidc` (default)
+  - `zerodev_social`
+  - `walletconnect` (registered but not runtime-enabled)
+- `SMART_ACCOUNT_PROVIDER`:
+  - `zerodev` (default)
+  - `walletconnect` (registered but not runtime-enabled)
+- `NEXT_PUBLIC_ZERODEV_PROJECT_ID` (required when `AUTH_PROVIDER=zerodev_social`)
+- `NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER` (optional: `google` default, `facebook`)
+- `NEXT_PUBLIC_ZERODEV_CHAIN_ID` (optional: chain ID for ZeroDev social, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required when `AUTH_PROVIDER=walletconnect`)
+- `NEXT_PUBLIC_WALLETCONNECT_CHAIN_ID` (optional: chain ID for WalletConnect, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+
+### Auth Provider Adapters
+| Provider | Server Session | Client Login | Smart Account Provisioning | Unified Wallet Auth |
+|----------|----------------|--------------|---------------------------|---------------------|
+| `google_oidc` | ✓ | ✗ | ✓ | ✗ |
+| `zerodev_social` | ✗ | ✓ | ✗ | ✓ |
+| `walletconnect` | ✗ | ✓ | ✗ | ✓ |
+
+### Smart Account Provider Adapters
+| Provider | Server Provisioning | UserOp Submission | External Wallet |
+|----------|--------------------|--------------------|-----------------|
+| `zerodev` | ✓ | ✓ | ✗ |
+| `walletconnect` | ✗ | ✓ | ✓ |
+
+### Updated Endpoints
+- `GET /auth/provider`
+  - Returns active provider metadata including capabilities.
+  - Response: `{ provider, displayName, capabilities }`
+- `GET /auth/login`
+  - Delegates to `AuthFacade.initiateLogin()`:
+    - Server providers: redirects to provider-specific route
+    - Client providers: redirects to app for client-side initiation
+- `GET /auth/me`
+  - Uses `SmartAccountFacade.getSmartAccountForUser()` for wallet status.
+  - Includes `authProvider` from active provider metadata.
+
+### Service Boundary Notes
+- Google OIDC path remains server-validated and issues app session cookies.
+- ZeroDev social path is client-side session for login UX and provider modularity.
+- Wallet provisioning hook uses `authMetadata.capabilities.smartAccountProvisioning` check.
+- WalletConnect adapters are registered but return not-implemented errors when called.
+- Unified wallet auth providers (ZeroDev Social, WalletConnect) create wallets client-side; `/auth/me` returns server-provisioned wallet only.
+- Frontend displays unified wallet status for client-side auth sessions using provider capabilities.
+
+### Implementation Files (Stage 3 - Full Architecture)
+**Auth Provider Layer:**
+- `web/src/lib/auth/providers/types.ts` - Provider contracts and interfaces
+- `web/src/lib/auth/providers/registry.ts` - Registry and AuthFacade
+- `web/src/lib/auth/providers/setup.ts` - Auto-registration
+- `web/src/lib/auth/providers/adapters/google-oidc.ts` - Google adapter
+- `web/src/lib/auth/providers/adapters/zerodev-social.ts` - ZeroDev social adapter
+- `web/src/lib/auth/providers/adapters/walletconnect.ts` - WalletConnect placeholder
+
+**Smart Account Provider Layer:**
+- `web/src/lib/wallet/providers/types.ts` - Provider contracts and interfaces
+- `web/src/lib/wallet/providers/registry.ts` - Registry and SmartAccountFacade
+- `web/src/lib/wallet/providers/setup.ts` - Auto-registration
+- `web/src/lib/wallet/providers/adapters/zerodev.ts` - ZeroDev adapter
+- `web/src/lib/wallet/providers/adapters/walletconnect.ts` - WalletConnect placeholder
+
+**Updated Route/UI Files:**
+- `web/src/app/auth/login/route.ts` - Uses AuthFacade
+- `web/src/app/auth/provider/route.ts` - Uses AuthFacade for metadata
+- `web/src/app/auth/me/route.ts` - Uses SmartAccountFacade
+- `web/src/app/auth/google/callback/route.ts` - Uses facades for provisioning
+- `web/src/app/page.tsx` - Capability-driven auth UI
+
+## Stage 4: Reown AppKit Integration (Social Login + Smart Accounts)
+Status: Implemented
+
+### Goals
+- Add Reown AppKit as a unified auth + wallet provider supporting social login, email OTP, and WalletConnect wallets.
+- Leverage AppKit's embedded wallet creation during social login (non-custodial, client-side).
+- Integrate via the existing dual-plane adapter architecture without disrupting existing providers.
+
+### Architecture
+- AppKit wraps the entire app via `AppKitProvider` in root layout (SSR cookie hydration via Wagmi).
+- `<appkit-button>` web component provides the auth modal (social logins, email, wallets).
+- Client-side state managed via `useAppKitAccount` and `useAccount` hooks.
+- No server-side provisioning needed: AppKit creates embedded wallets as part of the login flow.
+
+### Auth Provider Adapter
+| Provider | Server Session | Client Login | Smart Account Provisioning | Unified Wallet Auth |
+|----------|----------------|--------------|---------------------------|---------------------|
+| `reown_appkit` | No | Yes | No | Yes |
+
+### Smart Account Provider Adapter
+| Provider | Server Provisioning | UserOp Submission | External Wallet |
+|----------|--------------------|--------------------|-----------------|
+| `reown_appkit` | No | Yes (client-side via wagmi) | No |
+
+### Environment Variables
+- `NEXT_PUBLIC_REOWN_PROJECT_ID` (Reown/WalletConnect Cloud project ID; required)
+- `NEXT_PUBLIC_APPKIT_CHAIN_ID` (optional, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `AUTH_PROVIDER=reown_appkit` (to activate)
+- `SMART_ACCOUNT_PROVIDER=reown_appkit` (to activate)
+
+### Social Login Features
+Configured in `createAppKit()`:
+- `email: true` (email OTP login)
+- `socials: ["google", "x", "github", "discord", "apple", "facebook", "farcaster"]`
+- `emailShowWallets: true` (show wallet options alongside social)
+- `allWallets: "SHOW"` (show all WalletConnect wallets)
+
+### Implementation Files
+- `web/src/config/index.tsx` - Wagmi adapter + network config
+- `web/src/context/index.tsx` - AppKitProvider with createAppKit initialization
+- `web/src/global.d.ts` - TypeScript declarations for `<appkit-button>`
+- `web/src/lib/auth/providers/adapters/reown-appkit.ts` - Auth adapter
+- `web/src/lib/wallet/providers/adapters/reown-appkit.ts` - Smart account adapter
+- `web/src/app/layout.tsx` - Root layout with AppKitProvider wrapping
+- `web/src/app/page.tsx` - Frontend with AppKit-aware auth UX
+
+## Stage 5: Rhinestone Smart Account + Session Keys (Implemented)
+Status: Implemented
+
+### Goals
+- Wrap Reown AppKit walletClient into a Rhinestone ERC-7579 smart account (deterministic address across all chains).
+- Display cross-chain portfolio via Rhinestone orchestrator.
+- Enable session keys for backend DCA automation (user signs once, backend executes autonomously).
+
+### Architecture
+- Rhinestone SDK creates a smart account from the Reown AppKit signer (EOA or embedded wallet).
+- SDK communicates with the Rhinestone orchestrator via a server-side proxy (`/api/orchestrator/[...path]`).
+- The proxy injects `RHINESTONE_API_KEY` as `x-api-key` header so the key never reaches the browser.
+- Session keys use Smart Sessions (experimental) with scoped policies.
+
+### Smart Account Model
+- Account type: ERC-7579 modular smart account
+- Owner: ECDSA signer from Reown AppKit walletClient
+- Address: deterministic, same on all supported chains
+- Portfolio: unified cross-chain balance view via orchestrator API
+
+### Session Keys for DCA
+- Backend signer (`SMART_ACCOUNT_OWNER_PRIVATE_KEY`) is granted a session key with:
+  - `spending-limits` policy: caps total ERC-20 transfer amount per session
+  - `time-frame` policy: session expires after configured duration (default 30 days)
+- User enables the session with a single on-chain transaction (signs once)
+- Backend `/api/dca/execute` endpoint uses the session key to submit DCA transfers
+
+### Environment Variables
+- `RHINESTONE_API_KEY` (server-side only, proxied via orchestrator route)
+- `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (existing, reused as session key owner for DCA)
+
+### Implementation Files
+- `web/src/app/api/orchestrator/[...path]/route.ts` - Rhinestone API proxy (keeps key server-side)
+- `web/src/hooks/useRhinestoneAccount.ts` - Hook: wraps Reown walletClient into Rhinestone smart account
+- `web/src/lib/wallet/rhinestone-sessions.ts` - Session key creation + DCA policies
+- `web/src/app/api/dca/execute/route.ts` - Backend DCA execution using session key
+- `web/src/lib/wallet/providers/adapters/reown-appkit.ts` - Updated adapter reflecting Rhinestone integration
+- `web/src/app/page.tsx` - Frontend with Rhinestone smart account + portfolio display

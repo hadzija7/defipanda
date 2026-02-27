@@ -48,3 +48,84 @@
   - `ENABLE_SMART_ACCOUNT_PROVISIONING` feature flag
   - canary targeting + observability + rollback checklist
 - [x] Wire frontend UI to display smart account address, status, chain, and provider for authenticated users.
+
+## Phase 5 - Auth Stage 3 (Modular Provider Switching)
+- [x] Add provider selection module with `AUTH_PROVIDER` config (`google_oidc` default, `zerodev_social` optional).
+- [x] Add provider metadata endpoint (`GET /auth/provider`) for frontend branching.
+- [x] Add provider-aware login entrypoint (`GET /auth/login`) to centralize switching logic.
+- [x] Keep Google callback provisioning hook active only for Google provider mode.
+- [x] Extend `/auth/me` response with active `authProvider`.
+- [x] Update frontend auth UX to branch login/logout behavior by provider.
+- [x] Add unit tests for auth provider config parser and fallback behavior.
+- [x] Resolve `@magic-sdk/*` export mismatch by pinning compatible `@magic-sdk/types`, and re-enable ZeroDev social login/logout runtime calls.
+- [x] Stabilize ZeroDev social OAuth callback URL to a deterministic origin path and add client-side error diagnostics for login failures.
+
+## Phase 6 - Modular Provider Architecture (Full)
+- [x] Define auth and smart-account provider interfaces (`IAuthProviderAdapter`, `ISmartAccountProviderAdapter`).
+- [x] Create provider registries and facade modules (`AuthFacade`, `SmartAccountFacade`).
+- [x] Implement Google OIDC auth adapter with server-session capabilities.
+- [x] Implement ZeroDev social auth adapter with client-login capabilities.
+- [x] Implement ZeroDev smart account adapter wrapping existing provisioning/userops.
+- [x] Add WalletConnect placeholder adapters for auth and smart account planes.
+- [x] Update routes (`/auth/login`, `/auth/provider`, `/auth/me`) to use facades.
+- [x] Update Google callback to use facades for capability-driven provisioning.
+- [x] Update frontend UI to use capability-driven auth branching.
+- [x] Update specs and architecture docs to reflect dual-plane provider model.
+- [x] Add `unifiedWalletAuth` capability for providers that handle both auth AND wallet in one flow.
+- [x] Add `linkedSmartAccountProvider` to auth adapters for unified wallet providers.
+- [x] Update ZeroDev Social and WalletConnect adapters with unified wallet capability.
+- [x] Update frontend to display unified wallet status for client-side auth sessions.
+
+## Phase 7 - Reown AppKit Integration (Social Login + Smart Accounts)
+- [x] Install Reown AppKit dependencies (`@reown/appkit`, `@reown/appkit-adapter-wagmi`, `wagmi`, `@tanstack/react-query`).
+- [x] Create AppKit Wagmi adapter config (`web/src/config/index.tsx`) with SSR cookie storage.
+- [x] Create AppKit context provider (`web/src/context/index.tsx`) with social login features enabled.
+- [x] Add `reown_appkit` auth provider adapter implementing `IAuthProviderAdapter` with `unifiedWalletAuth` capability.
+- [x] Add `reown_appkit` smart account provider adapter implementing `ISmartAccountProviderAdapter` (client-side wallet).
+- [x] Register both adapters in setup modules and update type unions, registries, and barrel exports.
+- [x] Update root layout to wrap app in `AppKitProvider` with SSR cookie hydration.
+- [x] Add TypeScript global declarations for `<appkit-button>` web component.
+- [x] Update frontend page to show `<appkit-button>` when `AUTH_PROVIDER=reown_appkit` and display connected wallet info.
+- [x] Update docs: architecture, quality scorecard, README, and specs.
+
+## Phase 8 - Rhinestone Smart Account + Session Keys Integration
+- [x] Install `@rhinestone/sdk` dependency.
+- [x] Create Rhinestone orchestrator proxy route (`/api/orchestrator/[...path]`) to keep API key server-side.
+- [x] Create `useRhinestoneAccount` hook wrapping Reown walletClient into Rhinestone ERC-7579 smart account.
+- [x] Update frontend page to display Rhinestone smart account address and cross-chain portfolio.
+- [x] Create session key module (`web/src/lib/wallet/rhinestone-sessions.ts`) with DCA-scoped policies (spending-limits, time-frame).
+- [x] Create backend DCA execution endpoint (`/api/dca/execute`) using Rhinestone session keys.
+- [x] Update Reown AppKit smart account adapter to reflect Rhinestone SDK integration.
+- [x] Update docs: architecture, quality scorecard, and TODO.
+
+## Phase 9 - DCA Execution Pipeline (CRE Smart Trigger + Backend Executor)
+- [ ] Upgrade CRE workflow from hello-world to smart trigger:
+  - Add Zod config schema (price feed address, chain, tokens, amount, slippage)
+  - Add EVM Read: Chainlink price feed `latestRoundData()` with consensus
+  - Add execution decision logic (price staleness check, slippage bounds)
+  - Add HTTP POST to backend `/api/dca/execute` with consensus-verified params
+  - Add `cacheSettings` for single-execution across DON nodes
+- [ ] Add CRE secrets configuration:
+  - `secrets.yaml` with `BACKEND_AUTH_TOKEN` and `BACKEND_URL`
+  - Environment setup docs for simulation and deployment
+- [ ] Update `/api/dca/execute` endpoint:
+  - Add bearer token authentication (validate CRE auth token)
+  - Accept CRE-verified execution params (price, minOutput, slippage)
+  - Add idempotency key to prevent double-execution
+  - Encode DEX swap calldata (Uniswap V3 `exactInputSingle`) instead of plain `transfer`
+- [ ] Update session key permissions (`rhinestone-sessions.ts`):
+  - Add DEX router address as permitted target
+  - Add swap function selector (`exactInputSingle`) alongside existing `transfer`
+  - Retain spending-limit + time-frame policies
+- [ ] Add CRE workflow staging config for Base Sepolia:
+  - Chainlink ETH/USD price feed address
+  - Uniswap V3 SwapRouter address
+  - USDC and WETH testnet addresses
+- [ ] Simulate end-to-end: `cre workflow simulate dca-workflow --target staging-settings`
+- [ ] Update docs: architecture, CRE workflows spec, quality scorecard
+
+## Phase 10 - Hybrid CRE Execution (Experimental)
+- [ ] Verify viem noble-curves secp256k1 works in CRE QuickJS WASM runtime
+- [ ] If compatible: store session key as CRE secret, sign transactions inside CRE
+- [ ] If compatible: submit signed transactions via HTTP POST to RPC (eliminate backend from execution path)
+- [ ] If incompatible: document limitations, stay with Phase 9 architecture
