@@ -21,3 +21,12 @@ export {
   type UserOpResult,
   type UserOpReceipt,
 } from "./userops";
+
+export {
+  SmartAccountFacade,
+  initializeSmartAccountProviders,
+  type SmartAccountProviderId,
+  type SmartAccountProviderMetadata,
+  type SmartAccountLinkage,
+  type ISmartAccountProviderAdapter,
+} from "./providers";

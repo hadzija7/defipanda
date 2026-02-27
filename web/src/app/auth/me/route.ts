@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import "@/lib/auth/providers/setup";
+import "@/lib/wallet/providers/setup";
+import { AuthFacade } from "@/lib/auth/providers";
+import { SmartAccountFacade } from "@/lib/wallet/providers";
 import { APP_SESSION_COOKIE_NAME, getAppSession, getUserBySub } from "@/lib/auth/store";
-import { getSmartAccountForUser, isSmartAccountProvisioningEnabled } from "@/lib/wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const authMetadata = AuthFacade.getActiveProviderMetadata();
   const sessionCookie = request.cookies.get(APP_SESSION_COOKIE_NAME)?.value;
   const session = await getAppSession(sessionCookie);
 
   if (!session) {
     return NextResponse.json({
+      authProvider: authMetadata.id,
       authenticated: false,
       user: null,
       wallet: null,
@@ -21,6 +26,7 @@ export async function GET(request: NextRequest) {
   const user = await getUserBySub(session.userSub);
   if (!user) {
     return NextResponse.json({
+      authProvider: authMetadata.id,
       authenticated: false,
       user: null,
       wallet: null,
@@ -28,9 +34,9 @@ export async function GET(request: NextRequest) {
   }
 
   let wallet = null;
-  if (isSmartAccountProvisioningEnabled()) {
+  if (SmartAccountFacade.isEnabled()) {
     try {
-      const linkage = await getSmartAccountForUser(user.sub);
+      const linkage = await SmartAccountFacade.getSmartAccountForUser(user.sub);
       if (linkage) {
         wallet = {
           status: linkage.provisioningStatus,
@@ -46,6 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
+    authProvider: authMetadata.id,
     authenticated: true,
     user: {
       sub: user.sub,

@@ -9,7 +9,10 @@ import {
   OAUTH_FLOW_COOKIE_NAME,
   upsertGoogleUser,
 } from "@/lib/auth/store";
-import { ensureSmartAccountForUser, isSmartAccountProvisioningEnabled } from "@/lib/wallet";
+import "@/lib/auth/providers/setup";
+import "@/lib/wallet/providers/setup";
+import { AuthFacade } from "@/lib/auth/providers";
+import { SmartAccountFacade } from "@/lib/wallet/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,9 +68,10 @@ export async function GET(request: NextRequest) {
 
     const user = await upsertGoogleUser(identity);
 
-    if (isSmartAccountProvisioningEnabled()) {
+    const authMetadata = AuthFacade.getActiveProviderMetadata();
+    if (authMetadata.capabilities.smartAccountProvisioning && SmartAccountFacade.isEnabled()) {
       try {
-        await ensureSmartAccountForUser(user.sub);
+        await SmartAccountFacade.ensureSmartAccountForUser(user.sub);
       } catch (provisioningError) {
         console.error("Smart account provisioning failed (non-blocking):", provisioningError);
       }
