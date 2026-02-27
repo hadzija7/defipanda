@@ -13,6 +13,14 @@ type SimulationResponse = {
   error?: string;
 };
 
+type WalletStatus = {
+  status: "pending" | "ready" | "failed";
+  address: string | null;
+  chainId: string;
+  provider: string;
+  error: string | null;
+};
+
 type AuthMeResponse = {
   authenticated: boolean;
   user: {
@@ -22,6 +30,7 @@ type AuthMeResponse = {
     name?: string;
     picture?: string;
   } | null;
+  wallet: WalletStatus | null;
 };
 
 export default function Home() {
@@ -41,6 +50,7 @@ export default function Home() {
       setAuthState({
         authenticated: false,
         user: null,
+        wallet: null,
       });
     } finally {
       setIsAuthLoading(false);
@@ -121,6 +131,56 @@ export default function Home() {
             </div>
           ) : null}
         </section>
+
+        {!isAuthLoading && authState?.authenticated && authState.wallet ? (
+          <section className="flex flex-col gap-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="text-sm font-medium">Smart Account</div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${
+                  authState.wallet.status === "ready"
+                    ? "bg-emerald-500"
+                    : authState.wallet.status === "failed"
+                      ? "bg-red-500"
+                      : "bg-amber-500"
+                }`}
+              />
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                {authState.wallet.status === "ready"
+                  ? "Provisioned"
+                  : authState.wallet.status === "failed"
+                    ? "Provisioning failed"
+                    : "Provisioning..."}
+              </span>
+            </div>
+            {authState.wallet.address ? (
+              <div className="flex flex-col gap-1">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">Address</div>
+                <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
+                  {authState.wallet.address}
+                </code>
+              </div>
+            ) : null}
+            <div className="flex gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+              <span>Chain: {authState.wallet.chainId}</span>
+              <span>Provider: {authState.wallet.provider}</span>
+            </div>
+            {authState.wallet.error ? (
+              <div className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+                {authState.wallet.error}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {!isAuthLoading && authState?.authenticated && !authState.wallet ? (
+          <section className="flex flex-col gap-2 rounded-md border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
+            <div className="text-sm font-medium text-zinc-400 dark:text-zinc-500">Smart Account</div>
+            <div className="text-xs text-zinc-400 dark:text-zinc-500">
+              Provisioning not enabled. Set <code>ENABLE_SMART_ACCOUNT_PROVISIONING=true</code> to activate.
+            </div>
+          </section>
+        ) : null}
 
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Frontend -&gt; Next.js API route -&gt; CRE CLI simulation. This runs{" "}

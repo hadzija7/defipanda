@@ -26,6 +26,19 @@ type UserRecord = {
   updatedAt: number;
 };
 
+export type ProvisioningStatus = "pending" | "ready" | "failed";
+
+export type SmartAccountLinkage = {
+  userSub: string;
+  chainId: string;
+  provider: string;
+  smartAccountAddress?: string;
+  provisioningStatus: ProvisioningStatus;
+  lastError?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 const OAUTH_FLOW_TTL_MS = 10 * 60 * 1000;
 const APP_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -243,4 +256,117 @@ export async function getUserBySub(sub: string): Promise<UserRecord | null> {
     createdAt: row.created_at.getTime(),
     updatedAt: row.updated_at.getTime(),
   };
+}
+
+type SmartAccountLinkageRow = {
+  user_sub: string;
+  chain_id: string;
+  provider: string;
+  smart_account_address: string | null;
+  provisioning_status: string;
+  last_error: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+function rowToSmartAccountLinkage(row: SmartAccountLinkageRow): SmartAccountLinkage {
+  return {
+    userSub: row.user_sub,
+    chainId: row.chain_id,
+    provider: row.provider,
+    smartAccountAddress: row.smart_account_address ?? undefined,
+    provisioningStatus: row.provisioning_status as ProvisioningStatus,
+    lastError: row.last_error ?? undefined,
+    createdAt: row.created_at.getTime(),
+    updatedAt: row.updated_at.getTime(),
+  };
+}
+
+export async function getSmartAccountLinkage(
+  userSub: string,
+  chainId: string,
+  provider: string,
+): Promise<SmartAccountLinkage | null> {
+  const { rows } = await query<SmartAccountLinkageRow>(
+    `SELECT user_sub, chain_id, provider, smart_account_address, provisioning_status, last_error, created_at, updated_at
+     FROM smart_account_linkages
+     WHERE user_sub = $1 AND chain_id = $2 AND provider = $3`,
+    [userSub, chainId, provider],
+  );
+  if (rows.length === 0) return null;
+  return rowToSmartAccountLinkage(rows[0]);
+}
+
+export async function getSmartAccountLinkagesForUser(userSub: string): Promise<SmartAccountLinkage[]> {
+  const { rows } = await query<SmartAccountLinkageRow>(
+    `SELECT user_sub, chain_id, provider, smart_account_address, provisioning_status, last_error, created_at, updated_at
+     FROM smart_account_linkages
+     WHERE user_sub = $1
+     ORDER BY created_at ASC`,
+    [userSub],
+  );
+  return rows.map(rowToSmartAccountLinkage);
+}
+
+export async function upsertSmartAccountLinkagePending(
+  userSub: string,
+  chainId: string,
+  provider: string,
+): Promise<SmartAccountLinkage> {
+  const { rows } = await query<SmartAccountLinkageRow>(
+    `INSERT INTO smart_account_linkages (user_sub, chain_id, provider, provisioning_status, updated_at)
+     VALUES ($1, $2, $3, 'pending', NOW())
+     ON CONFLICT (user_sub, chain_id, provider) DO UPDATE
+       SET provisioning_status = CASE
+             WHEN smart_account_linkages.provisioning_status = 'ready' THEN 'ready'
+             ELSE 'pending'
+           END,
+           updated_at = NOW()
+     RETURNING user_sub, chain_id, provider, smart_account_address, provisioning_status, last_error, created_at, updated_at`,
+    [userSub, chainId, provider],
+  );
+  return rowToSmartAccountLinkage(rows[0]);
+}
+
+export async function updateSmartAccountLinkageReady(
+  userSub: string,
+  chainId: string,
+  provider: string,
+  smartAccountAddress: string,
+): Promise<SmartAccountLinkage> {
+  const { rows } = await query<SmartAccountLinkageRow>(
+    `UPDATE smart_account_linkages
+     SET smart_account_address = $4,
+         provisioning_status = 'ready',
+         last_error = NULL,
+         updated_at = NOW()
+     WHERE user_sub = $1 AND chain_id = $2 AND provider = $3
+     RETURNING user_sub, chain_id, provider, smart_account_address, provisioning_status, last_error, created_at, updated_at`,
+    [userSub, chainId, provider, smartAccountAddress],
+  );
+  if (rows.length === 0) {
+    throw new Error(`Smart account linkage not found for user ${userSub}, chain ${chainId}, provider ${provider}`);
+  }
+  return rowToSmartAccountLinkage(rows[0]);
+}
+
+export async function updateSmartAccountLinkageFailed(
+  userSub: string,
+  chainId: string,
+  provider: string,
+  error: string,
+): Promise<SmartAccountLinkage> {
+  const { rows } = await query<SmartAccountLinkageRow>(
+    `UPDATE smart_account_linkages
+     SET provisioning_status = 'failed',
+         last_error = $4,
+         updated_at = NOW()
+     WHERE user_sub = $1 AND chain_id = $2 AND provider = $3
+     RETURNING user_sub, chain_id, provider, smart_account_address, provisioning_status, last_error, created_at, updated_at`,
+    [userSub, chainId, provider, error],
+  );
+  if (rows.length === 0) {
+    throw new Error(`Smart account linkage not found for user ${userSub}, chain ${chainId}, provider ${provider}`);
+  }
+  return rowToSmartAccountLinkage(rows[0]);
 }

@@ -74,6 +74,25 @@ async function initializeSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_app_sessions_expires_at
       ON app_sessions (expires_at);
     `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS smart_account_linkages (
+        user_sub TEXT NOT NULL REFERENCES auth_users(sub) ON DELETE CASCADE,
+        chain_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        smart_account_address TEXT,
+        provisioning_status TEXT NOT NULL DEFAULT 'pending',
+        last_error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_sub, chain_id, provider)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_smart_account_linkages_user_sub
+      ON smart_account_linkages (user_sub);
+    `);
   } finally {
     client.release();
   }

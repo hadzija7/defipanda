@@ -65,3 +65,84 @@ Status: In Progress
 - Unit tests for retry behavior after transient failures in:
   - `web/src/lib/db/postgres.test.ts`
   - `web/src/lib/auth/google-oidc.test.ts`
+
+## Stage 2: ZeroDev Smart Account Integration (Implemented)
+Status: Implemented
+
+### Goals
+- Provision one ZeroDev smart account per authenticated Google user.
+- Keep login resilient: auth success must not depend on immediate wallet provisioning success.
+- Establish backend-owned UserOp submission path for future strategy actions.
+
+### Auth-to-Wallet Binding Model
+- Identity source of truth remains Google `sub`.
+- Wallet linkage key: (`user_sub`, `chain_id`, `provider`).
+- Provider value for Stage 2: `zerodev`.
+- Initial network: Tenderly Virtualnet (mainnet fork, chain ID 1).
+
+### Callback Behavior (Stage 2 Hook)
+- Hook location: after user upsert in `GET /auth/google/callback`.
+- Call `ensureSmartAccountForUser(userSub)` from wallet provisioning module.
+- Outcomes:
+  - `ready`: wallet address persisted and returned in profile metadata.
+  - `pending`: transient provisioning in progress (safe to retry).
+  - `failed`: session remains valid; error recorded for support/debugging.
+
+### Wallet Persistence Contract
+- Add smart account linkage table/fields with:
+  - `user_sub`
+  - `chain_id`
+  - `provider`
+  - `smart_account_address`
+  - `provisioning_status` (`pending | ready | failed`)
+  - `last_error`
+  - timestamps
+- Enforce uniqueness on (`user_sub`, `chain_id`, `provider`) for idempotency.
+
+### Backend UserOp Stack (Baseline)
+- Viem-first chain client and RPC transport.
+- ZeroDev SDK for account lifecycle + UserOp helpers.
+- Bundler submission through configured ZeroDev RPC endpoint.
+- Optional paymaster left out in initial slice (can be introduced after baseline is stable).
+
+### Service Boundaries
+- `web` backend owns:
+  - account create-or-load
+  - persistence updates
+  - UserOp build/submit/wait helpers
+- Browser app owns:
+  - authenticated user UX
+  - wallet status presentation/retry trigger only
+
+### Initial API Contracts (Internal)
+- `ensureSmartAccountForUser(userSub) -> { status, address?, chainId, error? }`
+- `buildUserOp(input) -> unsignedUserOp`
+- `submitUserOp(unsignedUserOp) -> userOpHash`
+- `waitForUserOpReceipt(userOpHash) -> receipt`
+
+### Environment Variables (Stage 2)
+- `ENABLE_SMART_ACCOUNT_PROVISIONING` (feature flag, default: disabled)
+- `SMART_ACCOUNT_RPC_URL` (required when enabled, e.g. Tenderly Virtualnet URL)
+- `SMART_ACCOUNT_CHAIN_ID` (default: 1)
+- `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (required when enabled, server-managed signer key)
+- `ZERODEV_RPC_URL` (optional, bundler RPC; defaults to `SMART_ACCOUNT_RPC_URL`)
+
+### Test Coverage (Stage 2)
+- Unit tests in `web/src/lib/wallet/store.test.ts`:
+  - Linkage CRUD operations
+  - Idempotency constraints
+- Unit tests in `web/src/lib/wallet/provisioning.test.ts`:
+  - Create-or-load idempotency
+  - Failure-to-retry transitions
+  - Disabled provisioning path
+
+### Implementation Files (Stage 2)
+- `web/src/lib/wallet/config.ts` - Environment config and validation
+- `web/src/lib/wallet/provisioning.ts` - `ensureSmartAccountForUser`
+- `web/src/lib/wallet/userops.ts` - UserOp build/submit/wait helpers
+- `web/src/lib/wallet/index.ts` - Module exports
+- `web/src/lib/db/postgres.ts` - Added `smart_account_linkages` table
+- `web/src/lib/auth/store.ts` - Added linkage store methods
+- `web/src/app/auth/google/callback/route.ts` - Stage 2 provisioning hook
+- `web/src/app/auth/me/route.ts` - Wallet status in profile response
+- `docs/runbooks/zerodev-smart-account-setup.md` - Operations runbook

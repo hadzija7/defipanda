@@ -43,6 +43,13 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 - Identity key: Google `sub` claim.
 - Persistence: PostgreSQL-backed user/session/auth-flow tables.
 
+## Planned Auth + Wallet Bridge (Phase 2)
+- After successful Google callback, backend triggers smart-account provisioning (`create-or-load`) keyed by `user_sub`.
+- One smart account per user per configured chain/provider tuple.
+- Login remains resilient: session issuance is not blocked by provisioning failures.
+- Backend owns UserOp preparation/submission through a Viem + ZeroDev integration module.
+- Browser surfaces wallet provisioning status; it does not submit UserOps directly.
+
 ## Tech Stack (Current)
 - Frontend: Next.js
 - Automation runtime: Chainlink CRE

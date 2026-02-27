@@ -9,6 +9,7 @@ import {
   OAUTH_FLOW_COOKIE_NAME,
   upsertGoogleUser,
 } from "@/lib/auth/store";
+import { ensureSmartAccountForUser, isSmartAccountProvisioningEnabled } from "@/lib/wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,15 @@ export async function GET(request: NextRequest) {
     });
 
     const user = await upsertGoogleUser(identity);
+
+    if (isSmartAccountProvisioningEnabled()) {
+      try {
+        await ensureSmartAccountForUser(user.sub);
+      } catch (provisioningError) {
+        console.error("Smart account provisioning failed (non-blocking):", provisioningError);
+      }
+    }
+
     const appSession = await createAppSession(user.sub);
     const safeReturnTo = sanitizeReturnTo(flowSession.returnTo);
 
