@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { useAccount } from "wagmi";
-import { useRhinestoneAccount, type TokenBalance } from "@/hooks/useRhinestoneAccount";
+import { useRhinestoneAccount, type TokenBalance, type OnChainBalances } from "@/hooks/useRhinestoneAccount";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -107,6 +107,69 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // Portfolio display
 // ---------------------------------------------------------------------------
 
+function OnChainBalancesView({
+  balances,
+  onRefresh,
+}: {
+  balances: OnChainBalances | null;
+  onRefresh: () => void;
+}) {
+  if (!balances) {
+    return (
+      <div className="flex items-center gap-2 py-4">
+        <StatusDot color="amber" />
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">Loading balances...</span>
+      </div>
+    );
+  }
+
+  const usdcNum = parseFloat(balances.usdc);
+  const wethNum = parseFloat(balances.weth);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          {balances.chainName} balances
+        </span>
+        <button
+          onClick={onRefresh}
+          type="button"
+          className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">USDC</span>
+          <span className={`text-sm font-medium ${usdcNum === 0 ? "text-red-500" : ""}`}>
+            {usdcNum.toFixed(2)}
+          </span>
+        </div>
+        <div className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">DCA input token</div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">WETH</span>
+          <span className="text-sm font-medium">
+            {wethNum < 0.0001 && wethNum > 0 ? "<0.0001" : wethNum.toFixed(6)}
+          </span>
+        </div>
+        <div className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">DCA output token</div>
+      </div>
+
+      {usdcNum === 0 && (
+        <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+          No USDC balance. Deposit USDC to start DCA executions.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PortfolioView({
   portfolio,
   onRefresh,
@@ -115,23 +178,13 @@ function PortfolioView({
   onRefresh: () => void;
 }) {
   if (portfolio.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 py-6 text-center">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No balances found</p>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500">
-          Send USDC or ETH to your smart account address to get started.
-        </p>
-        <button onClick={onRefresh} type="button" className="mt-1 rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
-          Refresh balances
-        </button>
-      </div>
-    );
+    return null;
   }
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cross-chain balances</span>
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cross-chain overview</span>
         <button onClick={onRefresh} type="button" className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
           Refresh
         </button>
@@ -167,11 +220,13 @@ function DcaStrategyForm({
   ownerAddress,
   existingPosition,
   onSaved,
+  usdcBalance,
 }: {
   smartAccountAddress: string;
   ownerAddress: string;
   existingPosition: DcaPosition | null;
   onSaved: (position: DcaPosition) => void;
+  usdcBalance: string | null;
 }) {
   const [amount, setAmount] = useState(
     existingPosition ? formatUsdc(existingPosition.amountUsdc) : "10",
@@ -249,7 +304,7 @@ function DcaStrategyForm({
               <>
                 <span>Last tx</span>
                 <a
-                  href={`https://sepolia.basescan.org/tx/${pos.lastExecutionTxHash}`}
+                  href={`https://sepolia.etherscan.io/tx/${pos.lastExecutionTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -313,12 +368,26 @@ function DcaStrategyForm({
           <span className="font-medium">Token pair:</span> USDC → ETH (WETH)
         </div>
         <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          <span className="font-medium">Chain:</span> Base Sepolia (testnet)
+          <span className="font-medium">Chain:</span> Ethereum Sepolia (testnet)
         </div>
         <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           <span className="font-medium">Max slippage:</span> 0.5%
         </div>
       </div>
+
+      {usdcBalance !== null && (() => {
+        const balNum = parseFloat(usdcBalance);
+        const amtNum = parseFloat(amount);
+        if (!isNaN(balNum) && !isNaN(amtNum) && amtNum > balNum) {
+          return (
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              DCA amount ({amtNum.toFixed(2)} USDC) exceeds your balance ({balNum.toFixed(2)} USDC).
+              Deposit more USDC before activating.
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {error && (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
@@ -372,6 +441,7 @@ export default function Home() {
   const {
     accountAddress: rhinestoneAddress,
     portfolio: rhinestonePortfolio,
+    onChainBalances,
     isLoading: rhinestoneLoading,
     error: rhinestoneError,
     refreshPortfolio,
@@ -474,10 +544,18 @@ export default function Home() {
               ) : null}
             </Card>
 
-            {/* Portfolio */}
+            {/* On-chain balances (active chain) */}
             {rhinestoneAddress && (
               <Card>
-                <SectionTitle>Portfolio</SectionTitle>
+                <SectionTitle>Balances</SectionTitle>
+                <OnChainBalancesView balances={onChainBalances} onRefresh={refreshPortfolio} />
+              </Card>
+            )}
+
+            {/* Cross-chain portfolio (Rhinestone aggregated) */}
+            {rhinestoneAddress && rhinestonePortfolio.length > 0 && (
+              <Card>
+                <SectionTitle>Cross-Chain Portfolio</SectionTitle>
                 <PortfolioView portfolio={rhinestonePortfolio} onRefresh={refreshPortfolio} />
               </Card>
             )}
@@ -487,7 +565,7 @@ export default function Home() {
               <Card>
                 <SectionTitle>Deposit Funds</SectionTitle>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Send USDC to your smart account address on Base Sepolia to fund your DCA strategy.
+                  Send USDC to your smart account address on Ethereum Sepolia to fund your DCA strategy.
                 </p>
                 <div className="mt-3 flex flex-col gap-1">
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">Send USDC to:</span>
@@ -500,7 +578,7 @@ export default function Home() {
                   <a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
                     Circle faucet
                   </a>
-                  {" "}(select Base Sepolia).
+                  {" "}(select Ethereum Sepolia).
                 </div>
               </Card>
             )}
@@ -520,6 +598,7 @@ export default function Home() {
                     ownerAddress={appKitAccount.address}
                     existingPosition={position}
                     onSaved={(p) => setPosition(p)}
+                    usdcBalance={onChainBalances?.usdc ?? null}
                   />
                 )}
               </Card>
@@ -529,7 +608,7 @@ export default function Home() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
-          Base Sepolia testnet only. No real funds.
+          Ethereum Sepolia testnet only. No real funds.
         </div>
       </div>
     </div>

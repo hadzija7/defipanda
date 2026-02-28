@@ -3,7 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { RhinestoneSDK, walletClientToAccount } from "@rhinestone/sdk";
-import { formatUnits } from "viem";
+import {
+  createPublicClient,
+  erc20Abi,
+  formatUnits,
+  http,
+} from "viem";
+import { activeNetwork } from "@/lib/constants/networks";
+
+const activeChainClient = createPublicClient({
+  chain: activeNetwork.chain,
+  transport: http(),
+});
 
 export interface TokenBalance {
   symbol: string;
@@ -23,11 +34,21 @@ export interface TokenBalance {
   }>;
 }
 
+export interface OnChainBalances {
+  usdc: string;
+  weth: string;
+  usdcRaw: string;
+  wethRaw: string;
+  chainName: string;
+  chainId: number;
+}
+
 export interface RhinestoneAccountState {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rhinestoneAccount: any | null;
   accountAddress: string | null;
   portfolio: TokenBalance[];
+  onChainBalances: OnChainBalances | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -55,6 +76,7 @@ export function useRhinestoneAccount() {
     rhinestoneAccount: null,
     accountAddress: null,
     portfolio: [],
+    onChainBalances: null,
     isLoading: false,
     error: null,
   });
@@ -131,6 +153,42 @@ export function useRhinestoneAccount() {
     [state.rhinestoneAccount],
   );
 
+  const fetchOnChainBalances = useCallback(async (accountAddr?: string) => {
+    const addr = accountAddr || state.accountAddress;
+    if (!addr) return;
+
+    try {
+      const [usdcBal, wethBal] = await Promise.all([
+        activeChainClient.readContract({
+          address: activeNetwork.usdc,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [addr as `0x${string}`],
+        }),
+        activeChainClient.readContract({
+          address: activeNetwork.weth,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [addr as `0x${string}`],
+        }),
+      ]);
+
+      setState((prev) => ({
+        ...prev,
+        onChainBalances: {
+          usdc: formatUnits(usdcBal, activeNetwork.usdcDecimals),
+          weth: formatUnits(wethBal, activeNetwork.wethDecimals),
+          usdcRaw: usdcBal.toString(),
+          wethRaw: wethBal.toString(),
+          chainName: activeNetwork.name,
+          chainId: activeNetwork.chainId,
+        },
+      }));
+    } catch (e) {
+      console.error("Failed to fetch on-chain balances:", e);
+    }
+  }, [state.accountAddress]);
+
   const initializeRhinestoneAccount = useCallback(async () => {
     if (!isConnected || !address || !walletClient) {
       setState((prev) => ({
@@ -138,6 +196,7 @@ export function useRhinestoneAccount() {
         rhinestoneAccount: null,
         accountAddress: null,
         portfolio: [],
+        onChainBalances: null,
         error: null,
       }));
       return;
@@ -194,8 +253,20 @@ export function useRhinestoneAccount() {
     }
   }, [state.rhinestoneAccount, fetchPortfolio]);
 
+  useEffect(() => {
+    if (state.accountAddress) {
+      fetchOnChainBalances();
+    }
+  }, [state.accountAddress, fetchOnChainBalances]);
+
+  const refreshAll = useCallback(() => {
+    fetchPortfolio();
+    fetchOnChainBalances();
+  }, [fetchPortfolio, fetchOnChainBalances]);
+
   return {
     ...state,
-    refreshPortfolio: () => fetchPortfolio(),
+    refreshPortfolio: refreshAll,
+    refreshOnChainBalances: fetchOnChainBalances,
   };
 }

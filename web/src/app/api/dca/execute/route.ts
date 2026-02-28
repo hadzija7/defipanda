@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RhinestoneSDK } from "@rhinestone/sdk";
-import { encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
-import { buildBackendDcaSession } from "@/lib/wallet/rhinestone-sessions";
 import {
-  USDC_ADDRESS,
-  WETH_ADDRESS,
-  UNISWAP_V3_SWAP_ROUTER_02,
-  UNISWAP_V3_POOL_FEE,
-  swapRouter02Abi,
-} from "@/lib/constants/base-sepolia";
+  createPublicClient,
+  encodeFunctionData,
+  erc20Abi,
+  formatUnits,
+  http,
+  type Address,
+  type Hex,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { buildBackendDcaSession } from "@/lib/wallet/rhinestone-sessions";
+import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
 import { getDuePositions, markExecuted } from "@/lib/dca/store";
 
 export const runtime = "nodejs";
@@ -110,11 +111,16 @@ export async function POST(request: NextRequest) {
     const backendPrivateKey = getRequiredEnv("SMART_ACCOUNT_OWNER_PRIVATE_KEY") as Hex;
     const rhinestoneApiKey = getRequiredEnv("RHINESTONE_API_KEY");
     const backendSignerAccount = privateKeyToAccount(backendPrivateKey);
-    const chain = baseSepolia;
+    const chain = activeNetwork.chain;
 
     const rhinestone = new RhinestoneSDK({
       apiKey: rhinestoneApiKey,
       endpointUrl: "https://v1.orchestrator.rhinestone.dev",
+    });
+
+    const publicClient = createPublicClient({
+      chain: activeNetwork.chain,
+      transport: http(),
     });
 
     const ethPriceRaw = BigInt(consensusPrice);
@@ -127,14 +133,50 @@ export async function POST(request: NextRequest) {
       try {
         const amountIn = BigInt(position.amountUsdc);
 
-        // minOutputWeth = (amountIn * 1e20) / ethPrice * (10000 - slippage) / 10000
+        // --- Pre-check: does the smart account have enough USDC? ---
+        const usdcBalance = await publicClient.readContract({
+          address: activeNetwork.usdc,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [position.smartAccountAddress as Address],
+        });
+
+        if (usdcBalance < amountIn) {
+          const errorMsg = `Insufficient USDC: balance=${formatUnits(usdcBalance, activeNetwork.usdcDecimals)}, needed=${formatUnits(amountIn, activeNetwork.usdcDecimals)}`;
+          console.warn(
+            `Skipping position ${position.id} (${position.smartAccountAddress}): ${errorMsg}`,
+          );
+          await markExecuted(position.id, null, errorMsg).catch(console.error);
+          results.push({
+            positionId: position.id,
+            user: position.smartAccountAddress,
+            amountIn: amountIn.toString(),
+            txHash: null,
+            error: errorMsg,
+          });
+          continue;
+        }
+
+        // Calculate reference minOutput from oracle for logging,
+        // but use 0 for the actual swap on testnet — the Chainlink oracle price
+        // and the Uniswap testnet pool price can diverge significantly.
         const exp20 = BigInt("100000000000000000000");
         const bps10k = BigInt(10_000);
         const rawOutput = (amountIn * exp20) / ethPriceRaw;
-        const minOutput = (rawOutput * (bps10k - slippageBps)) / bps10k;
+        const referenceMinOutput = (rawOutput * (bps10k - slippageBps)) / bps10k;
 
-        // Target the USER's smart account via initData, not the backend's own account.
-        // The backend signer is a session key holder, not the account owner.
+        // On testnet, pools have thin/mismatched liquidity vs Chainlink oracle price.
+        // Accept any output to avoid reverts; real slippage protection lives on mainnet.
+        const amountOutMinimum = BigInt(0);
+
+        console.log(
+          `DCA swap: position=${position.id} account=${position.smartAccountAddress} ` +
+          `amountIn=${formatUnits(amountIn, activeNetwork.usdcDecimals)} USDC ` +
+          `balance=${formatUnits(usdcBalance, activeNetwork.usdcDecimals)} USDC ` +
+          `oracleMinOutput=${formatUnits(referenceMinOutput, activeNetwork.wethDecimals)} WETH ` +
+          `actualMinOutput=0 (testnet) fee=${activeNetwork.uniswapV3PoolFee}`,
+        );
+
         const rhinestoneAccount = await rhinestone.createAccount({
           initData: { address: position.smartAccountAddress as Address },
           owners: {
@@ -147,14 +189,14 @@ export async function POST(request: NextRequest) {
         const { session } = buildBackendDcaSession({
           backendSignerPrivateKey: backendPrivateKey,
           chain,
-          inputTokenAddress: USDC_ADDRESS,
-          swapRouterAddress: UNISWAP_V3_SWAP_ROUTER_02,
+          inputTokenAddress: activeNetwork.usdc,
+          swapRouterAddress: activeNetwork.uniswapV3SwapRouter02,
         });
 
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
-          args: [UNISWAP_V3_SWAP_ROUTER_02, amountIn],
+          args: [activeNetwork.uniswapV3SwapRouter02, amountIn],
         });
 
         const swapCalldata = encodeFunctionData({
@@ -162,25 +204,23 @@ export async function POST(request: NextRequest) {
           functionName: "exactInputSingle",
           args: [
             {
-              tokenIn: USDC_ADDRESS,
-              tokenOut: WETH_ADDRESS,
-              fee: UNISWAP_V3_POOL_FEE,
+              tokenIn: activeNetwork.usdc,
+              tokenOut: activeNetwork.weth,
+              fee: activeNetwork.uniswapV3PoolFee,
               recipient: position.smartAccountAddress as `0x${string}`,
               amountIn,
-              amountOutMinimum: minOutput,
+              amountOutMinimum,
               sqrtPriceLimitX96: BigInt(0),
             },
           ],
         });
 
-        // Use the manual prepare → sign → submit flow.
-        // sendTransaction() blocks experimental_session signers in SDK v1.2.14,
-        // but the manual flow supports them through the intent-based orchestrator.
+        // prepare → sign → submit (sendTransaction blocks experimental_session signers)
         const prepared = await rhinestoneAccount.prepareTransaction({
           chain,
           calls: [
-            { to: USDC_ADDRESS, value: BigInt(0), data: approveCalldata },
-            { to: UNISWAP_V3_SWAP_ROUTER_02, value: BigInt(0), data: swapCalldata },
+            { to: activeNetwork.usdc, value: BigInt(0), data: approveCalldata },
+            { to: activeNetwork.uniswapV3SwapRouter02, value: BigInt(0), data: swapCalldata },
           ],
           signers: {
             type: "experimental_session" as const,
@@ -209,12 +249,23 @@ export async function POST(request: NextRequest) {
         });
 
         console.log(
-          `DCA executed: position=${position.id} user=${position.smartAccountAddress} amountIn=${amountIn} txHash=${txHash}`,
+          `DCA executed: position=${position.id} user=${position.smartAccountAddress} ` +
+          `amountIn=${formatUnits(amountIn, activeNetwork.usdcDecimals)} USDC txHash=${txHash}`,
         );
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        let errorMsg = err instanceof Error ? err.message : "Unknown error";
 
-        await markExecuted(position.id, null, errorMsg).catch((e) =>
+        // Capture Rhinestone SDK error context for debugging
+        if (err && typeof err === "object") {
+          const sdkErr = err as Record<string, unknown>;
+          if (sdkErr._context) {
+            const ctx = JSON.stringify(sdkErr._context);
+            console.error(`Rhinestone error context for ${position.smartAccountAddress}:`, ctx);
+            errorMsg += ` | context: ${ctx}`;
+          }
+        }
+
+        await markExecuted(position.id, null, errorMsg.slice(0, 500)).catch((e) =>
           console.error("Failed to record execution error:", e),
         );
 

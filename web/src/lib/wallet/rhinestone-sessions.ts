@@ -15,13 +15,7 @@
 import type { Address, Chain, Hex } from "viem";
 import { parseUnits, toFunctionSelector, getAbiItem, erc20Abi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
-import {
-  USDC_ADDRESS,
-  WETH_ADDRESS,
-  UNISWAP_V3_SWAP_ROUTER_02,
-  swapRouter02Abi,
-} from "@/lib/constants/base-sepolia";
+import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
 
 export type DcaSessionConfig = {
   backendSignerAddress: Address;
@@ -63,9 +57,9 @@ export function buildDcaSessionConfig(config: {
   validityDurationMs?: number;
 }): DcaSessionDefinition {
   const backendSignerAccount = privateKeyToAccount(config.backendSignerPrivateKey);
-  const chain = config.chain ?? baseSepolia;
-  const inputToken = config.inputTokenAddress ?? USDC_ADDRESS;
-  const swapRouter = config.swapRouterAddress ?? UNISWAP_V3_SWAP_ROUTER_02;
+  const chain = config.chain ?? activeNetwork.chain;
+  const inputToken = config.inputTokenAddress ?? activeNetwork.usdc;
+  const swapRouter = config.swapRouterAddress ?? activeNetwork.uniswapV3SwapRouter02;
   const spendingLimit = parseUnits(
     config.spendingLimit || DEFAULT_SPENDING_LIMIT_USDC,
     config.spendingLimitDecimals ?? USDC_DECIMALS,

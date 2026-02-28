@@ -153,7 +153,7 @@ After Option B is proven, explore moving signing into CRE itself:
 
 ## Key Unknowns To Resolve Next
 1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
-2. Uniswap V3 USDC/WETH pool liquidity on Base Sepolia — needs testnet verification.
+2. Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia — needs testnet verification.
 3. Monitoring stack selection and alert channels.
 4. Deployment model (environments, secrets handling, promotion flow).
 5. Production-grade idempotency store (currently in-memory, needs Redis/DB).

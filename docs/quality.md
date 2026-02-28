@@ -28,7 +28,9 @@ Last Updated: 2026-02-28
 - Rhinestone Smart Sessions is experimental; session key API may have breaking changes.
 - CRE workflow simulation not yet verified end-to-end (pending `cre workflow simulate` run).
 - In-memory idempotency guard removed; DB interval check in `getDuePositions()` is the sole dedup mechanism.
-- Uniswap V3 USDC/WETH pool liquidity on Base Sepolia not yet verified.
+- Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia not yet verified; `amountOutMinimum=0` on testnet as workaround.
 - DCA positions are now DB-backed; schema auto-initializes at first query.
 - Production needs a job queue for sequential nonce management across concurrent user executions.
 - CRE `cacheSettings.maxAge` reduced to 10s (from 60s) to avoid stale cache blocking consecutive cron triggers.
+- Execute endpoint now pre-checks USDC balance and skips positions gracefully; "Bundle simulation failed" root cause was oracle/pool price mismatch.
+- Frontend now reads USDC/WETH balances directly from chain (independent of Rhinestone portfolio API) and warns when balance < DCA amount.

@@ -12,7 +12,7 @@ DefiPanda is an automated Dollar-Cost Averaging (DCA) platform built on Chainlin
 
 ### V1 Scope
 
-- **Fixed token pair:** USDC → ETH (WETH) on Base Sepolia
+- **Fixed token pair:** USDC → ETH (WETH) on Ethereum Sepolia
 - **User-configurable:** amount per execution, execution interval, active/paused
 - **Automation:** CRE DON triggers execution on schedule; backend submits swaps via Rhinestone session keys
 - **Auth:** Social login via Reown AppKit (Google, GitHub, Discord, X, Apple, Facebook, Farcaster, email OTP)
@@ -75,7 +75,7 @@ DefiPanda is an automated Dollar-Cost Averaging (DCA) platform built on Chainlin
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         ON-CHAIN (Base Sepolia)                         │
+│                       ON-CHAIN (Ethereum Sepolia)                       │
 │                                                                         │
 │  ┌─────────────────┐  ┌───────────────────┐  ┌──────────────────┐     │
 │  │ Rhinestone      │  │ Uniswap V3        │  │ Chainlink        │     │
@@ -229,12 +229,12 @@ Two independent provider planes with facade pattern:
 
 | Constant | Address | Network |
 |----------|---------|---------|
-| USDC | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Base Sepolia |
-| WETH | `0x4200000000000000000000000000000000000006` | Base Sepolia |
-| Uniswap V3 SwapRouter02 | `0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4` | Base Sepolia |
+| USDC | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` | Ethereum Sepolia |
+| WETH | `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14` | Ethereum Sepolia |
+| Uniswap V3 SwapRouter02 | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` | Ethereum Sepolia |
 | Chainlink ETH/USD feed | `0x694AA1769357215DE4FAC081bf1f309aDC325306` | Ethereum Sepolia |
 
-File: `src/lib/constants/base-sepolia.ts`
+File: `src/lib/constants/networks.ts` (active network: `ETH_SEPOLIA`)
 
 ---
 
@@ -323,7 +323,7 @@ See section 3.1.5 for table details.
 | **Rhinestone** | ERC-7579 smart accounts, cross-chain portfolio, session keys, intent-based tx execution | SDK on client (`useRhinestoneAccount`) + backend (`/api/dca/execute`), orchestrator proxied via `/api/orchestrator` |
 | **Chainlink CRE** | Decentralized automation (cron + consensus-verified EVM reads + HTTP) | CRE workflow (`cre/dca-workflow/main.ts`) deployed to DON |
 | **Chainlink Price Feeds** | ETH/USD price with consensus | EVM read in CRE workflow (Ethereum Sepolia) |
-| **Uniswap V3** | USDC → WETH token swap | SwapRouter02 `exactInputSingle` on Base Sepolia |
+| **Uniswap V3** | USDC → WETH token swap | SwapRouter02 `exactInputSingle` on Ethereum Sepolia |
 | **Google OIDC** | Server-side authentication (legacy path) | Auth routes (`/auth/google/*`) |
 
 ---
@@ -447,7 +447,7 @@ See section 3.1.5 for table details.
 - Session key creation and validation tests
 - Rhinestone SDK integration tests
 - Frontend component tests
-- Uniswap V3 pool liquidity verification on Base Sepolia
+- Uniswap V3 pool liquidity verification on Ethereum Sepolia
 
 **Test runner:** Vitest (configured in `web/vitest.config.ts`)
 
@@ -460,7 +460,7 @@ See section 3.1.5 for table details.
 | Aspect | Staging | Production |
 |--------|---------|------------|
 | CRE schedule | Every 30 seconds | Every 5 minutes (or hourly) |
-| Chain | Base Sepolia | Base mainnet (future) |
+| Chain | Ethereum Sepolia | Ethereum mainnet (future) |
 | Price feed | Ethereum Sepolia testnet | Mainnet Chainlink feed |
 | Backend URL | localhost / staging URL | Production URL |
 | Token addresses | Testnet USDC/WETH | Mainnet tokens |
@@ -492,7 +492,7 @@ See section 3.1.5 for table details.
 | No rate limiting | Public API endpoints vulnerable to abuse | Medium |
 | No monitoring/alerting | Blind to failures in production | High |
 | CRE simulation not verified | End-to-end path untested | High |
-| Uniswap V3 pool liquidity unverified | Swaps may fail on Base Sepolia | Medium |
+| Uniswap V3 pool liquidity unverified | Swaps may fail on Ethereum Sepolia | Medium |
 
 ### 9.2 Planned Future Work
 
@@ -507,7 +507,7 @@ See section 3.1.5 for table details.
 ### 9.3 Key Technical Questions
 
 1. **Does viem noble-curves secp256k1 work in CRE's QuickJS WASM runtime?** — Determines if Phase 10 hybrid execution is feasible
-2. **Uniswap V3 USDC/WETH pool on Base Sepolia** — Needs testnet liquidity verification
+2. **Uniswap V3 USDC/WETH pool on Ethereum Sepolia** — Needs testnet liquidity verification
 3. **Rhinestone Smart Sessions stability** — Experimental API; track for breaking changes
 
 ---

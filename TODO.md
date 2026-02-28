@@ -116,18 +116,25 @@
   - DB-based dedup via `getDuePositions()` interval check (in-memory idempotency removed)
   - Uniswap V3 SwapRouter02 `exactInputSingle` swap encoding (USDC→WETH)
   - Iterates all active DCA strategies per execution
+  - USDC balance pre-check per position (skip gracefully on insufficient funds)
+  - Testnet-safe `amountOutMinimum=0` (oracle/pool price divergence on Sepolia)
+  - Rhinestone SDK error context captured in logs and stored error messages
 - [x] Update session key permissions (`rhinestone-sessions.ts`):
   - `approve` on input token for DEX router
   - `exactInputSingle` on Uniswap V3 SwapRouter02
   - Spending-limit + time-frame policies retained
-- [x] Add contract address constants (`web/src/lib/constants/base-sepolia.ts`):
-  - USDC, WETH, Uniswap V3 SwapRouter02, Chainlink ETH/USD price feed
+- [x] Add contract address constants (network-switchable `web/src/lib/constants/networks.ts`):
+  - Ethereum Sepolia active: USDC, WETH, Uniswap V3 SwapRouter02, Chainlink ETH/USD price feed
+  - Base Sepolia config retained for easy switching
   - SwapRouter02 ABI and Chainlink price feed ABI
 - [x] Build simplified single-page UI:
   - Smart account wallet view (Rhinestone address, status)
-  - Cross-chain portfolio / balance display
+  - On-chain USDC/WETH balance display (direct contract reads on active chain)
+  - Cross-chain portfolio / balance display (Rhinestone aggregated)
+  - Balance warning when DCA amount exceeds USDC balance
   - Deposit instructions with Circle faucet link
   - DCA strategy configuration (amount, interval, activate/pause)
+  - Explorer link corrected to Ethereum Sepolia etherscan
 - [x] Create DCA strategy API (DB-backed):
   - `GET /api/dca/strategy?address=0x...` — load position for a smart account
   - `POST /api/dca/strategy` — save/update position (PostgreSQL `dca_positions` table)

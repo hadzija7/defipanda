@@ -31,7 +31,7 @@ portfolio rebalancing, AI-driven timing), but v1 is pure time-based DCA.
 ### Backend DCA Endpoint (`/api/dca/execute`)
 - Accepts `smartAccountAddress`, `tokenAddress`, `recipientAddress`, `amount`
 - Encodes an ERC-20 `transfer` (not a swap) via Rhinestone session key
-- Hardcoded to Base Sepolia chain
+- Hardcoded to Ethereum Sepolia chain (switchable via `activeNetwork` in `networks.ts`)
 - No authentication/authorization on the endpoint
 
 ### Session Keys (`rhinestone-sessions.ts`)
@@ -224,8 +224,8 @@ backend database, not in CRE.
 **Backend env vars needed (new):**
 - `CRE_BACKEND_AUTH_TOKEN` — expected bearer token (must match CRE secret)
 - `DCA_SWAP_ROUTER_ADDRESS` — DEX router contract address
-- `DCA_INPUT_TOKEN` — default input token (e.g., USDC on Base Sepolia)
-- `DCA_OUTPUT_TOKEN` — default output token (e.g., WETH on Base Sepolia)
+- `DCA_INPUT_TOKEN` — default input token (e.g., USDC on Ethereum Sepolia)
+- `DCA_OUTPUT_TOKEN` — default output token (e.g., WETH on Ethereum Sepolia)
 
 ### Step 5: Update Frontend
 
@@ -240,14 +240,14 @@ backend database, not in CRE.
 
 ## Chain and DEX Selection (Hackathon)
 
-**Target chain:** Base Sepolia (testnet)
-- CRE chain selector: `ethereum-testnet-sepolia-base-1`
-- Existing Rhinestone integration already uses Base Sepolia
-- Uniswap V3 is deployed on Base Sepolia
+**Target chain:** Ethereum Sepolia (testnet)
+- CRE chain selector: `ethereum-testnet-sepolia`
+- Rhinestone integration uses Ethereum Sepolia (configurable via `networks.ts`)
+- Uniswap V3 is deployed on Ethereum Sepolia
 
-**Price feed:** Chainlink ETH/USD on Base Sepolia (or Sepolia mainnet)
+**Price feed:** Chainlink ETH/USD on Ethereum Sepolia
 
-**DEX:** Uniswap V3 SwapRouter on Base Sepolia
+**DEX:** Uniswap V3 SwapRouter on Ethereum Sepolia
 - `exactInputSingle` for simple single-hop swaps
 - USDC → WETH as the default DCA pair
 

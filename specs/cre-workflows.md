@@ -165,7 +165,7 @@ For deployed workflows: secrets are stored in the Vault DON via `cre secrets cre
 | Aspect | Staging | Production |
 |--------|---------|------------|
 | Schedule | Every 30 seconds | Every 5 minutes (or hourly) |
-| Chain | Base Sepolia | Base mainnet (future) |
+| Chain | Ethereum Sepolia | Ethereum mainnet (future) |
 | Price feed | Testnet feed | Mainnet Chainlink feed |
 | Backend URL | localhost / staging URL | Production URL |
 | Token addresses | Testnet USDC/WETH | Mainnet tokens |
