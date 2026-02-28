@@ -16,7 +16,7 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 
 ## High-Level Data Flow
 1. User configures or updates strategy in the web app.
-2. Web layer writes/reads strategy state (exact persistence model TBD).
+2. Web layer writes/reads DCA positions in PostgreSQL (`dca_positions` table).
 3. CRE workflow executes DCA actions according to configured rules.
 4. Monitoring captures execution outcomes and alerts on failure conditions.
 5. Web app surfaces status and recent execution outcomes.
@@ -103,7 +103,7 @@ Rhinestone SDK wraps the Reown AppKit walletClient to provide:
 - **Backend DCA Endpoint**: `/api/dca/execute` uses session key to submit ERC-20 transfers
   on behalf of the user's Rhinestone smart account
 
-## DCA Execution Pipeline (Phase 6 - Planned)
+## DCA Execution Pipeline (Phase 9 - Implemented)
 
 ### Design: CRE Smart Trigger + Backend Executor
 
@@ -127,9 +127,16 @@ Rhinestone session key custody:
 | HTTP POST | Trigger backend execution (cacheSettings for single-call) |
 | Secrets | Backend auth token via Vault DON |
 
+### Execution Scheduling (DB-Backed)
+- DCA positions stored in PostgreSQL `dca_positions` table with `interval_seconds` and `last_executed_at`
+- On CRE trigger, backend queries `getDuePositions()`: active positions where `now - last_executed_at >= interval_seconds`
+- After execution, `markExecuted()` updates `last_executed_at`, `total_executions`, and tx hash/error
+- One position per smart account (unique index on `smart_account_address`)
+
 ### Double-Execution Prevention
 - CRE: `cacheSettings.readFromCache = true` deduplicates across DON nodes
 - Backend: idempotency key in request body prevents duplicate transactions
+- DB: interval check ensures positions only execute when due
 
 ### Future Evolution Path
 After Option B is proven, explore moving signing into CRE itself:
@@ -146,10 +153,12 @@ After Option B is proven, explore moving signing into CRE itself:
 - Monitoring: TBD (tooling not chosen yet)
 
 ## Key Unknowns To Resolve Next
-1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime?
-2. Which DEX router to target for session key permissions (Uniswap V3 on Base Sepolia).
+1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
+2. Uniswap V3 USDC/WETH pool liquidity on Base Sepolia — needs testnet verification.
 3. Monitoring stack selection and alert channels.
 4. Deployment model (environments, secrets handling, promotion flow).
+5. Production-grade idempotency store (currently in-memory, needs Redis/DB).
+6. Production job queue for sequential nonce management across concurrent users.
 
 ## Initial Conventions
 - Keep all workflow secrets out of source control.

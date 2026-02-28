@@ -93,6 +93,33 @@ async function initializeSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_smart_account_linkages_user_sub
       ON smart_account_linkages (user_sub);
     `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dca_positions (
+        id TEXT PRIMARY KEY,
+        smart_account_address TEXT NOT NULL,
+        owner_address TEXT NOT NULL,
+        amount_usdc TEXT NOT NULL,
+        interval_seconds INTEGER NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT true,
+        last_executed_at TIMESTAMPTZ,
+        last_execution_tx_hash TEXT,
+        last_execution_error TEXT,
+        total_executions INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_dca_positions_smart_account
+      ON dca_positions (smart_account_address);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_dca_positions_active
+      ON dca_positions (active) WHERE active = true;
+    `);
   } finally {
     client.release();
   }

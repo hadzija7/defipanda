@@ -4,9 +4,35 @@ import { encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 import { buildBackendDcaSession } from "@/lib/wallet/rhinestone-sessions";
+import {
+  USDC_ADDRESS,
+  WETH_ADDRESS,
+  UNISWAP_V3_SWAP_ROUTER_02,
+  UNISWAP_V3_POOL_FEE,
+  swapRouter02Abi,
+} from "@/lib/constants/base-sepolia";
+import { getDuePositions, markExecuted } from "@/lib/dca/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// ---------------------------------------------------------------------------
+// In-memory idempotency guard (defense-in-depth alongside DB interval check)
+// ---------------------------------------------------------------------------
+
+const recentExecutionIds = new Map<string, { timestamp: number; result: unknown }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+function pruneStaleEntries() {
+  const cutoff = Date.now() - IDEMPOTENCY_TTL_MS;
+  for (const [id, entry] of recentExecutionIds) {
+    if (entry.timestamp < cutoff) recentExecutionIds.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function getRequiredEnv(key: string): string {
   const value = process.env[key];
@@ -16,109 +42,226 @@ function getRequiredEnv(key: string): string {
   return value;
 }
 
+function validateBearerToken(request: NextRequest): boolean {
+  const expectedToken = process.env.CRE_BACKEND_AUTH_TOKEN;
+  if (!expectedToken) return false;
+
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  const token = authHeader.slice(7);
+  if (token.length !== expectedToken.length) return false;
+
+  let mismatch = 0;
+  for (let i = 0; i < token.length; i++) {
+    mismatch |= token.charCodeAt(i) ^ expectedToken.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface CREExecutionRequest {
+  consensusPrice: string;
+  maxSlippageBps: number;
+  executionTimestamp: number;
+  executionId: string;
+}
+
+interface ExecutionResult {
+  positionId: string;
+  user: string;
+  amountIn: string;
+  txHash: string | null;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/dca/execute
+// ---------------------------------------------------------------------------
+
 /**
- * POST /api/dca/execute
+ * Called by CRE workflow with consensus-verified market data.
+ * Reads all due DCA positions from the database (active + interval elapsed),
+ * executes USDC->WETH swaps on user smart accounts via Rhinestone session keys.
  *
- * Backend DCA execution endpoint. Uses a Rhinestone session key to submit
- * a swap/transfer transaction on behalf of the user's smart account.
- *
- * Expected JSON body:
- * {
- *   "smartAccountAddress": "0x...",  // The user's Rhinestone smart account
- *   "tokenAddress": "0x...",         // ERC-20 token to transfer (e.g. USDC)
- *   "recipientAddress": "0x...",     // Destination for the DCA output
- *   "amount": "1000000",            // Amount in smallest unit (e.g. 1 USDC = 1000000)
- *   "chainId": 84532                // Target chain ID (default: Base Sepolia)
- * }
- *
- * This endpoint is designed to be called by Chainlink CRE or a cron scheduler.
+ * The backend signer is NOT the account owner — it holds a scoped session key
+ * that the user pre-authorized. Transactions are submitted as orchestrator
+ * intents using the prepare → sign → submit flow.
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      smartAccountAddress,
-      tokenAddress,
-      recipientAddress,
-      amount,
-    } = body as {
-      smartAccountAddress: Address;
-      tokenAddress: Address;
-      recipientAddress: Address;
-      amount: string;
-      chainId?: number;
-    };
+    // --- Auth ---
+    if (!validateBearerToken(request)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!smartAccountAddress || !tokenAddress || !recipientAddress || !amount) {
+    const body = (await request.json()) as CREExecutionRequest;
+    const { consensusPrice, maxSlippageBps, executionTimestamp, executionId } = body;
+
+    if (!consensusPrice || !executionId) {
       return NextResponse.json(
-        { error: "Missing required fields: smartAccountAddress, tokenAddress, recipientAddress, amount" },
+        { error: "Missing required fields: consensusPrice, executionId" },
         { status: 400 },
       );
     }
 
+    // --- Idempotency ---
+    pruneStaleEntries();
+    const existing = recentExecutionIds.get(executionId);
+    if (existing) {
+      return NextResponse.json(
+        { ok: true, cached: true, previousResult: existing.result },
+        { status: 200 },
+      );
+    }
+
+    // --- Read due positions from DB ---
+    const duePositions = await getDuePositions();
+
+    if (duePositions.length === 0) {
+      const result = { executionsTriggered: 0, results: [] as ExecutionResult[] };
+      recentExecutionIds.set(executionId, { timestamp: Date.now(), result });
+      return NextResponse.json({ ok: true, ...result });
+    }
+
+    // --- Setup ---
     const backendPrivateKey = getRequiredEnv("SMART_ACCOUNT_OWNER_PRIVATE_KEY") as Hex;
     const rhinestoneApiKey = getRequiredEnv("RHINESTONE_API_KEY");
-
     const backendSignerAccount = privateKeyToAccount(backendPrivateKey);
+    const chain = baseSepolia;
 
     const rhinestone = new RhinestoneSDK({
       apiKey: rhinestoneApiKey,
       endpointUrl: "https://v1.orchestrator.rhinestone.dev",
     });
 
-    const rhinestoneAccount = await rhinestone.createAccount({
-      owners: {
-        type: "ecdsa" as const,
-        accounts: [backendSignerAccount],
-      },
-    });
+    const ethPriceRaw = BigInt(consensusPrice);
+    const slippageBps = BigInt(maxSlippageBps ?? 50);
 
-    const { session } = buildBackendDcaSession({
-      backendSignerPrivateKey: backendPrivateKey,
-      tokenAddress,
-    });
+    const results: ExecutionResult[] = [];
 
-    const chain = baseSepolia;
+    // --- Execute each due position sequentially (nonce ordering) ---
+    for (const position of duePositions) {
+      try {
+        const amountIn = BigInt(position.amountUsdc);
 
-    const transferCalldata = encodeFunctionData({
-      abi: erc20Abi,
-      functionName: "transfer",
-      args: [recipientAddress, BigInt(amount)],
-    });
+        // minOutputWeth = (amountIn * 1e20) / ethPrice * (10000 - slippage) / 10000
+        const exp20 = BigInt("100000000000000000000");
+        const bps10k = BigInt(10_000);
+        const rawOutput = (amountIn * exp20) / ethPriceRaw;
+        const minOutput = (rawOutput * (bps10k - slippageBps)) / bps10k;
 
-    const transaction = await rhinestoneAccount.sendTransaction({
-      chain,
-      calls: [
-        {
-          to: tokenAddress,
-          value: BigInt(0),
-          data: transferCalldata,
-        },
-      ],
-      signers: {
-        type: "experimental_session" as const,
-        session,
-      },
-    });
+        // Target the USER's smart account via initData, not the backend's own account.
+        // The backend signer is a session key holder, not the account owner.
+        const rhinestoneAccount = await rhinestone.createAccount({
+          initData: { address: position.smartAccountAddress as Address },
+          owners: {
+            type: "ecdsa" as const,
+            accounts: [backendSignerAccount],
+          },
+          experimental_sessions: { enabled: true },
+        });
 
-    const result = await rhinestoneAccount.waitForExecution(transaction);
+        const { session } = buildBackendDcaSession({
+          backendSignerPrivateKey: backendPrivateKey,
+          chain,
+          inputTokenAddress: USDC_ADDRESS,
+          swapRouterAddress: UNISWAP_V3_SWAP_ROUTER_02,
+        });
 
-    let transactionHash: string | null = null;
-    if (result && typeof result === "object") {
-      if ("fillTransactionHash" in result) {
-        transactionHash = result.fillTransactionHash as string;
-      } else if ("transactionHash" in result) {
-        transactionHash = result.transactionHash as string;
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [UNISWAP_V3_SWAP_ROUTER_02, amountIn],
+        });
+
+        const swapCalldata = encodeFunctionData({
+          abi: swapRouter02Abi,
+          functionName: "exactInputSingle",
+          args: [
+            {
+              tokenIn: USDC_ADDRESS,
+              tokenOut: WETH_ADDRESS,
+              fee: UNISWAP_V3_POOL_FEE,
+              recipient: position.smartAccountAddress as `0x${string}`,
+              amountIn,
+              amountOutMinimum: minOutput,
+              sqrtPriceLimitX96: BigInt(0),
+            },
+          ],
+        });
+
+        // Use the manual prepare → sign → submit flow.
+        // sendTransaction() blocks experimental_session signers in SDK v1.2.14,
+        // but the manual flow supports them through the intent-based orchestrator.
+        const prepared = await rhinestoneAccount.prepareTransaction({
+          chain,
+          calls: [
+            { to: USDC_ADDRESS, value: BigInt(0), data: approveCalldata },
+            { to: UNISWAP_V3_SWAP_ROUTER_02, value: BigInt(0), data: swapCalldata },
+          ],
+          signers: {
+            type: "experimental_session" as const,
+            session,
+          },
+        });
+
+        const signed = await rhinestoneAccount.signTransaction(prepared);
+        const txResult = await rhinestoneAccount.submitTransaction(signed);
+        const executionResult = await rhinestoneAccount.waitForExecution(txResult);
+
+        let txHash: string | null = null;
+        if (executionResult && typeof executionResult === "object") {
+          if ("fill" in executionResult) {
+            txHash = (executionResult as { fill: { hash?: string } }).fill.hash ?? null;
+          }
+        }
+
+        await markExecuted(position.id, txHash, null);
+
+        results.push({
+          positionId: position.id,
+          user: position.smartAccountAddress,
+          amountIn: amountIn.toString(),
+          txHash,
+        });
+
+        console.log(
+          `DCA executed: position=${position.id} user=${position.smartAccountAddress} amountIn=${amountIn} txHash=${txHash}`,
+        );
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+
+        await markExecuted(position.id, null, errorMsg).catch((e) =>
+          console.error("Failed to record execution error:", e),
+        );
+
+        results.push({
+          positionId: position.id,
+          user: position.smartAccountAddress,
+          amountIn: position.amountUsdc,
+          txHash: null,
+          error: errorMsg,
+        });
+
+        console.error(`DCA execution failed for ${position.smartAccountAddress}:`, err);
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      smartAccountAddress,
-      transaction,
-      transactionHash,
-      result,
-    });
+    const responseBody = {
+      executionsTriggered: duePositions.length,
+      results,
+      executionId,
+      consensusPrice,
+      executionTimestamp,
+    };
+
+    recentExecutionIds.set(executionId, { timestamp: Date.now(), result: responseBody });
+
+    return NextResponse.json({ ok: true, ...responseBody });
   } catch (error) {
     console.error("DCA execution error:", error);
     return NextResponse.json(

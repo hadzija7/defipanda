@@ -1,6 +1,6 @@
 # Phase 9: DCA Execution Pipeline (CRE Smart Trigger + Backend Executor)
 
-Status: Planned
+Status: In Progress
 
 ## Goal
 
@@ -73,9 +73,9 @@ portfolio rebalancing, AI-driven timing), but v1 is pure time-based DCA.
 │  1. Validate CRE auth token                         │
 │  2. Look up user's smart account + DCA config       │
 │  3. Encode USDC→ETH swap (Uniswap V3)              │
-│  4. Submit via Rhinestone session key               │
-│  5. Wait for execution receipt                      │
-│  6. Return result to CRE                            │
+│  4. Target user's account via initData              │
+│  5. prepare → sign → submit via session key         │
+│  6. Wait for execution receipt, return to CRE       │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -85,8 +85,8 @@ portfolio rebalancing, AI-driven timing), but v1 is pure time-based DCA.
 - **Verifiable execution trail**: cryptographic proof of what price was observed and when
 
 ### What the backend adds
-- **Session key custody**: holds `SMART_ACCOUNT_OWNER_PRIVATE_KEY` securely
-- **Rhinestone SDK integration**: constructs and submits swap transactions
+- **Session key custody**: holds `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (scoped session key, NOT the account owner)
+- **Rhinestone SDK integration**: targets user's account via `initData`, signs with session key, submits via prepare/sign/submit intent flow
 - **User account + strategy mapping**: knows which smart account to execute for, with what amount
 - **Auth/session management**: manages user identity and DCA preferences
 
@@ -250,6 +250,96 @@ backend database, not in CRE.
 **DEX:** Uniswap V3 SwapRouter on Base Sepolia
 - `exactInputSingle` for simple single-hop swaps
 - USDC → WETH as the default DCA pair
+
+## CRE Auth Reference
+
+Three distinct auth mechanisms in CRE, each serving a different purpose:
+
+### Layer 1: CRE CLI Auth (developer → CRE platform)
+
+Used when deploying workflows, managing secrets, and administering the project.
+
+- `cre login` — browser-based sign-in + 2FA, creates a local session
+- `CRE_API_KEY` env var — for CI/CD / headless environments (keys created in CRE platform UI)
+- `cre whoami` — verify current session
+- Sessions expire; re-login when needed
+
+Relevant to Phase 9: needed for `cre secrets create` and `cre workflow deploy`.
+
+### Layer 2: CRE Secrets (Vault DON — decentralized secret storage)
+
+How deployed workflows access sensitive values at runtime.
+
+- Declare secrets in a YAML file, set values as env vars, upload via `cre secrets create`
+- Workflow code retrieves them with `runtime.getSecret({ id: "..." })`
+- Same API works in simulation (reads `.env`) and production (reads Vault DON)
+
+**Critical implementation detail:** `getSecret()` is only available on `NodeRuntime`,
+not `Runtime`. This means Step 1 **must use the low-level `runInNodeMode` pattern**
+(not the high-level `httpClient.sendRequest()` helper) to access the bearer token:
+
+```typescript
+const postToBackend = (nodeRuntime: NodeRuntime<Config>): PostResponse => {
+  const secret = nodeRuntime.getSecret({ id: "BACKEND_AUTH_TOKEN" }).result()
+  const httpClient = new HTTPClient()
+
+  const req = {
+    url: nodeRuntime.config.backendUrl, // or use another secret
+    method: "POST" as const,
+    body: /* base64-encoded JSON */,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${secret.value}`,
+    },
+    cacheSettings: {
+      readFromCache: true,
+      maxAgeMs: 60000,
+    },
+  }
+
+  const resp = httpClient.sendRequest(nodeRuntime, req).result()
+  return { statusCode: resp.statusCode }
+}
+
+const onCronTrigger = (runtime: Runtime<Config>): string => {
+  const result = runtime
+    .runInNodeMode(postToBackend, consensusIdenticalAggregation<PostResponse>())()
+    .result()
+  return "Success"
+}
+```
+
+### Layer 3: CRE HTTP Trigger Auth (external caller → CRE gateway)
+
+How external systems trigger a CRE workflow via HTTP. **Not used in Phase 9** (we use
+cron trigger), but relevant for future manual-execution features.
+
+- Workflow configures `authorizedKeys` — EVM addresses allowed to trigger it
+- Callers sign requests with ECDSA and send a JWT (`alg: "ETH"`)
+- JWT includes: SHA256 digest of request body, issuer EVM address, `iat`/`exp`, `jti` UUID
+- Requests go to CRE gateway at `https://01.gateway.zone-a.cre.chain.link`
+
+### Implementation Notes
+
+1. **`runInNodeMode` is required** — the high-level `sendRequest` helper does not
+   expose `getSecret()`. Any HTTP request needing secrets must use the low-level pattern.
+
+2. **`cacheSettings` is the primary dedup mechanism** — multiple DON nodes execute
+   the workflow simultaneously; `cacheSettings: { readFromCache: true, maxAgeMs: ... }`
+   ensures only one node makes the actual HTTP POST. Others use the cached response.
+   Backend-side idempotency key is defense-in-depth.
+
+3. **`secrets-path` in `workflow.yaml` is currently empty** — must be updated to point
+   to the secrets YAML file before deployment.
+
+4. **Backend URL as a secret** — `BACKEND_URL` should be a CRE secret (not just config)
+   so it can change between environments without redeploying the workflow config.
+
+Sources:
+- https://docs.chain.link/cre/guides/workflow/using-http-client/post-request-ts
+- https://docs.chain.link/cre/guides/workflow/secrets/using-secrets-deployed
+- https://docs.chain.link/cre/guides/workflow/using-triggers/http-trigger/triggering-deployed-workflows
+- https://docs.chain.link/cre/account/managing-auth
 
 ## Future: Hybrid CRE Execution (Option C)
 

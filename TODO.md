@@ -5,7 +5,7 @@
 - [x] Create agent workflow scaffold and rules
 - [x] Add local web-to-CRE simulation bridge for end-to-end test flow
 - [ ] Confirm system boundaries (web vs CRE vs monitoring)
-- [ ] Confirm persistence approach for strategy state
+- [x] Confirm persistence approach for strategy state (PostgreSQL `dca_positions` table)
 
 ## Phase 2 - Spec Pass (Light)
 - [ ] Fill `specs/web-app.md` with core flows and contracts
@@ -99,30 +99,43 @@
 - [x] Update docs: architecture, quality scorecard, and TODO.
 
 ## Phase 9 - DCA Execution Pipeline (CRE Smart Trigger + Backend Executor)
-- [ ] Upgrade CRE workflow from hello-world to smart trigger:
-  - Add Zod config schema (price feed address, chain, tokens, amount, slippage)
-  - Add EVM Read: Chainlink price feed `latestRoundData()` with consensus
-  - Add execution decision logic (price staleness check, slippage bounds)
-  - Add HTTP POST to backend `/api/dca/execute` with consensus-verified params
-  - Add `cacheSettings` for single-execution across DON nodes
-- [ ] Add CRE secrets configuration:
+- [x] Upgrade CRE workflow from hello-world to smart trigger:
+  - Zod config schema (priceFeedAddress, priceFeedChainSelectorName, maxSlippageBps, minPriceFeedFreshnessSeconds)
+  - EVM Read: Chainlink ETH/USD `latestRoundData()` with DON consensus on Ethereum Sepolia
+  - Price staleness check (skip if older than minPriceFeedFreshnessSeconds)
+  - HTTP POST to backend `/api/dca/execute` with consensus-verified params via `runInNodeMode`
+  - `cacheSettings` for single-execution across DON nodes
+  - Bearer token auth from CRE secrets
+- [x] Add CRE secrets configuration:
   - `secrets.yaml` with `BACKEND_AUTH_TOKEN` and `BACKEND_URL`
-  - Environment setup docs for simulation and deployment
-- [ ] Update `/api/dca/execute` endpoint:
-  - Add bearer token authentication (validate CRE auth token)
-  - Accept CRE-verified execution params (price, minOutput, slippage)
-  - Add idempotency key to prevent double-execution
-  - Encode DEX swap calldata (Uniswap V3 `exactInputSingle`) instead of plain `transfer`
-- [ ] Update session key permissions (`rhinestone-sessions.ts`):
-  - Add DEX router address as permitted target
-  - Add swap function selector (`exactInputSingle`) alongside existing `transfer`
-  - Retain spending-limit + time-frame policies
-- [ ] Add CRE workflow staging config for Base Sepolia:
-  - Chainlink ETH/USD price feed address
-  - Uniswap V3 SwapRouter address
-  - USDC and WETH testnet addresses
+  - `.env` updated with simulation values
+  - `workflow.yaml` secrets-path pointed to `../secrets.yaml`
+- [x] Update `/api/dca/execute` endpoint:
+  - Bearer token authentication with constant-time comparison
+  - Accepts CRE-verified params (consensusPrice, maxSlippageBps, executionTimestamp, executionId)
+  - In-memory idempotency store keyed by executionId
+  - Uniswap V3 SwapRouter02 `exactInputSingle` swap encoding (USDC→WETH)
+  - Iterates all active DCA strategies per execution
+- [x] Update session key permissions (`rhinestone-sessions.ts`):
+  - `approve` on input token for DEX router
+  - `exactInputSingle` on Uniswap V3 SwapRouter02
+  - Spending-limit + time-frame policies retained
+- [x] Add contract address constants (`web/src/lib/constants/base-sepolia.ts`):
+  - USDC, WETH, Uniswap V3 SwapRouter02, Chainlink ETH/USD price feed
+  - SwapRouter02 ABI and Chainlink price feed ABI
+- [x] Build simplified single-page UI:
+  - Smart account wallet view (Rhinestone address, status)
+  - Cross-chain portfolio / balance display
+  - Deposit instructions with Circle faucet link
+  - DCA strategy configuration (amount, interval, activate/pause)
+- [x] Create DCA strategy API (DB-backed):
+  - `GET /api/dca/strategy?address=0x...` — load position for a smart account
+  - `POST /api/dca/strategy` — save/update position (PostgreSQL `dca_positions` table)
+  - DCA store module (`web/src/lib/dca/store.ts`) with typed CRUD operations
+  - `/api/dca/execute` reads due positions from DB, checks interval + last_executed_at
+  - `markExecuted()` updates last_executed_at, tx hash, error, and total_executions
 - [ ] Simulate end-to-end: `cre workflow simulate dca-workflow --target staging-settings`
-- [ ] Update docs: architecture, CRE workflows spec, quality scorecard
+- [x] Update docs: architecture, CRE workflows spec, quality scorecard, TODO
 
 ## Phase 10 - Hybrid CRE Execution (Experimental)
 - [ ] Verify viem noble-curves secp256k1 works in CRE QuickJS WASM runtime

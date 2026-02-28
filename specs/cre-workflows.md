@@ -14,7 +14,7 @@ Chainlink CRE (Chainlink Runtime Environment) provides the decentralized automat
 | Market data reading | CRE (EVM read + HTTP) | Consensus-verified price data |
 | Execution decision | CRE (workflow logic) | Decentralized agreement on whether/how to execute |
 | Transaction signing | Backend | Session key private key must not be in CRE (for now) |
-| Transaction submission | Backend (Rhinestone SDK) | TypeScript SDK requires Node.js runtime |
+| Transaction submission | Backend (Rhinestone SDK, intent-based prepare/sign/submit) | TypeScript SDK requires Node.js runtime |
 | User auth + strategy config | Backend (Next.js) | Server-side sessions, database, UI |
 | Strategy display + controls | Frontend (Next.js) | Client-side Reown AppKit + Rhinestone hooks |
 
@@ -174,12 +174,17 @@ For deployed workflows: secrets are stored in the Vault DON via `cre secrets cre
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Cron trigger | Implemented (skeleton) | Fires but only logs hello world |
-| EVM read (price feed) | Not implemented | Need to add EVMClient + price feed ABI |
-| HTTP POST to backend | Not implemented | Need to add HTTPClient + secrets |
-| Execution decision logic | Not implemented | Price checks, staleness, slippage |
-| Secrets configuration | Not implemented | Need secrets.yaml + env vars |
-| Config schema (Zod) | Not implemented | Current config only has `schedule` |
+| Cron trigger | Implemented | Fires on configurable schedule |
+| EVM read (price feed) | Implemented | Reads Chainlink ETH/USD latestRoundData() on Ethereum Sepolia |
+| HTTP POST to backend | Implemented | POSTs to backend with bearer token auth via runInNodeMode + secrets |
+| Execution decision logic | Implemented | Price staleness check based on minPriceFeedFreshnessSeconds |
+| Secrets configuration | Implemented | secrets.yaml with BACKEND_AUTH_TOKEN + BACKEND_URL; .env for simulation |
+| Config schema (Zod) | Implemented | schedule, priceFeedAddress, priceFeedChainSelectorName, maxSlippageBps, minPriceFeedFreshnessSeconds |
+| Backend auth | Implemented | Bearer token validation with constant-time comparison |
+| DEX swap encoding | Implemented | Uniswap V3 SwapRouter02 exactInputSingle (USDC→WETH) |
+| Session key permissions | Implemented | approve + exactInputSingle on DEX router with spending-limit + time-frame |
+| Idempotency | Implemented | In-memory store keyed by executionId (cre-round-{roundId}) |
+| End-to-end simulation | Not verified | Pending `cre workflow simulate` run |
 
 ## Future: Hybrid CRE Execution (Post-Phase 9)
 

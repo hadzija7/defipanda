@@ -163,6 +163,7 @@ export function useRhinestoneAccount() {
           type: "ecdsa" as const,
           accounts: [wrappedWalletClient],
         },
+        experimental_sessions: { enabled: true },
       });
 
       const accountAddress = rhinestoneAccount.getAddress();
