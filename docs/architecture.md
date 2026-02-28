@@ -134,9 +134,8 @@ Rhinestone session key custody:
 - One position per smart account (unique index on `smart_account_address`)
 
 ### Double-Execution Prevention
-- CRE: `cacheSettings.readFromCache = true` deduplicates across DON nodes
-- Backend: idempotency key in request body prevents duplicate transactions
-- DB: interval check ensures positions only execute when due
+- CRE: `cacheSettings` with short `maxAge` (10s) deduplicates across DON nodes within a single trigger
+- DB: `getDuePositions()` interval check (`NOW() - last_executed_at >= interval_seconds`) is the sole dedup mechanism on the backend; `markExecuted()` updates `last_executed_at` immediately after each swap
 
 ### Future Evolution Path
 After Option B is proven, explore moving signing into CRE itself:

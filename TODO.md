@@ -112,8 +112,8 @@
   - `workflow.yaml` secrets-path pointed to `../secrets.yaml`
 - [x] Update `/api/dca/execute` endpoint:
   - Bearer token authentication with constant-time comparison
-  - Accepts CRE-verified params (consensusPrice, maxSlippageBps, executionTimestamp, executionId)
-  - In-memory idempotency store keyed by executionId
+  - Accepts CRE-verified params (consensusPrice, maxSlippageBps, executionTimestamp)
+  - DB-based dedup via `getDuePositions()` interval check (in-memory idempotency removed)
   - Uniswap V3 SwapRouter02 `exactInputSingle` swap encoding (USDC→WETH)
   - Iterates all active DCA strategies per execution
 - [x] Update session key permissions (`rhinestone-sessions.ts`):

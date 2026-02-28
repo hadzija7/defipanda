@@ -27,7 +27,8 @@ Last Updated: 2026-02-28
 - ZeroDev social login remains sensitive to external project/domain configuration; runtime diagnostics are now in place but server-side observability is still minimal.
 - Rhinestone Smart Sessions is experimental; session key API may have breaking changes.
 - CRE workflow simulation not yet verified end-to-end (pending `cre workflow simulate` run).
-- Idempotency store is in-memory (lost on restart) — needs Redis or DB backing for production.
+- In-memory idempotency guard removed; DB interval check in `getDuePositions()` is the sole dedup mechanism.
 - Uniswap V3 USDC/WETH pool liquidity on Base Sepolia not yet verified.
 - DCA positions are now DB-backed; schema auto-initializes at first query.
 - Production needs a job queue for sequential nonce management across concurrent user executions.
+- CRE `cacheSettings.maxAge` reduced to 10s (from 60s) to avoid stale cache blocking consecutive cron triggers.

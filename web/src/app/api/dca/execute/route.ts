@@ -17,20 +17,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // ---------------------------------------------------------------------------
-// In-memory idempotency guard (defense-in-depth alongside DB interval check)
-// ---------------------------------------------------------------------------
-
-const recentExecutionIds = new Map<string, { timestamp: number; result: unknown }>();
-const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
-
-function pruneStaleEntries() {
-  const cutoff = Date.now() - IDEMPOTENCY_TTL_MS;
-  for (const [id, entry] of recentExecutionIds) {
-    if (entry.timestamp < cutoff) recentExecutionIds.delete(id);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -67,7 +53,8 @@ interface CREExecutionRequest {
   consensusPrice: string;
   maxSlippageBps: number;
   executionTimestamp: number;
-  executionId: string;
+  triggerTimestamp?: number;
+  roundId?: string;
 }
 
 interface ExecutionResult {
@@ -99,32 +86,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as CREExecutionRequest;
-    const { consensusPrice, maxSlippageBps, executionTimestamp, executionId } = body;
+    const { consensusPrice, maxSlippageBps, executionTimestamp } = body;
 
-    if (!consensusPrice || !executionId) {
+    if (!consensusPrice) {
       return NextResponse.json(
-        { error: "Missing required fields: consensusPrice, executionId" },
+        { error: "Missing required field: consensusPrice" },
         { status: 400 },
       );
     }
 
-    // --- Idempotency ---
-    pruneStaleEntries();
-    const existing = recentExecutionIds.get(executionId);
-    if (existing) {
-      return NextResponse.json(
-        { ok: true, cached: true, previousResult: existing.result },
-        { status: 200 },
-      );
-    }
-
-    // --- Read due positions from DB ---
+    // --- Read due positions from DB (interval check is the sole dedup) ---
     const duePositions = await getDuePositions();
 
     if (duePositions.length === 0) {
-      const result = { executionsTriggered: 0, results: [] as ExecutionResult[] };
-      recentExecutionIds.set(executionId, { timestamp: Date.now(), result });
-      return NextResponse.json({ ok: true, ...result });
+      return NextResponse.json({
+        ok: true,
+        executionsTriggered: 0,
+        results: [] as ExecutionResult[],
+      });
     }
 
     // --- Setup ---
@@ -251,17 +230,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const responseBody = {
+    return NextResponse.json({
+      ok: true,
       executionsTriggered: duePositions.length,
       results,
-      executionId,
       consensusPrice,
       executionTimestamp,
-    };
-
-    recentExecutionIds.set(executionId, { timestamp: Date.now(), result: responseBody });
-
-    return NextResponse.json({ ok: true, ...responseBody });
+    });
   } catch (error) {
     console.error("DCA execution error:", error);
     return NextResponse.json(

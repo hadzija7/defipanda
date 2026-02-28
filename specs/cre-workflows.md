@@ -183,7 +183,7 @@ For deployed workflows: secrets are stored in the Vault DON via `cre secrets cre
 | Backend auth | Implemented | Bearer token validation with constant-time comparison |
 | DEX swap encoding | Implemented | Uniswap V3 SwapRouter02 exactInputSingle (USDC→WETH) |
 | Session key permissions | Implemented | approve + exactInputSingle on DEX router with spending-limit + time-frame |
-| Idempotency | Implemented | In-memory store keyed by executionId (cre-round-{roundId}) |
+| Idempotency | Implemented | DB interval check via `getDuePositions()`; CRE `cacheSettings` (10s) for DON-level dedup |
 | End-to-end simulation | Not verified | Pending `cre workflow simulate` run |
 
 ## Future: Hybrid CRE Execution (Post-Phase 9)

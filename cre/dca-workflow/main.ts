@@ -135,6 +135,7 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
   const postToBackend = (
     nodeRuntime: NodeRuntime<Config>,
     pd: PriceData,
+    triggerTimestamp: number,
     authTokenValue: string,
     backendUrlValue: string
   ): PostResponse => {
@@ -144,7 +145,8 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
       consensusPrice: pd.price,
       maxSlippageBps: nodeRuntime.config.maxSlippageBps,
       executionTimestamp: pd.updatedAt,
-      executionId: `cre-round-${pd.roundId}`,
+      triggerTimestamp,
+      roundId: pd.roundId,
     };
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(payload));
@@ -160,7 +162,7 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
       },
       cacheSettings: {
         store: true,
-        maxAge: "60s",
+        maxAge: "10s",
       },
     };
 
@@ -177,7 +179,7 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
     .runInNodeMode(
       postToBackend,
       consensusIdenticalAggregation<PostResponse>()
-    )(priceData, authToken.value, backendUrl.value)
+    )(priceData, nowSeconds, authToken.value, backendUrl.value)
     .result();
 
   runtime.log(
