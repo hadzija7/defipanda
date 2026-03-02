@@ -13,7 +13,7 @@ Last Updated: 2026-02-28
 ## Cross-Cutting Layers
 | Layer | Grade | Notes |
 |---|---|---|
-| Security | C+ | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering; modular provider architecture with typed adapter contracts; unified wallet auth capability for ZeroDev Social, WalletConnect, and Reown AppKit (client-side wallet management); AppKit creates non-custodial embedded wallets with social login; Rhinestone API key proxied server-side via `/api/orchestrator` (never exposed to browser); session keys use spending-limit + time-frame policies for scoped DCA automation; `/api/dca/execute` now requires bearer token authentication; CRE→backend requests use constant-time token comparison |
+| Security | B- | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering; modular provider architecture with typed adapter contracts; unified wallet auth capability for ZeroDev Social, WalletConnect, and Reown AppKit (client-side wallet management); AppKit creates non-custodial embedded wallets with social login; Rhinestone API key proxied server-side via `/api/orchestrator` (never exposed to browser); session keys use spending-limit policies for scoped DCA automation; `/api/dca/execute` now requires bearer token authentication; CRE→backend requests use constant-time token comparison; Smart Sessions: user signs `experimental_signEnableSession` once, enable signature stored in DB, backend passes `enableData` for every execution (Rhinestone "enable mode") |
 | Observability | F | Monitoring architecture not finalized; auth UI now emits provider-specific ZeroDev login error details to browser console for faster triage |
 | Performance | F | No baseline measurements yet |
 | CI/CD | F | Pipeline not documented yet |
@@ -32,5 +32,9 @@ Last Updated: 2026-02-28
 - DCA positions are now DB-backed; schema auto-initializes at first query.
 - Production needs a job queue for sequential nonce management across concurrent user executions.
 - CRE `cacheSettings.maxAge` reduced to 10s (from 60s) to avoid stale cache blocking consecutive cron triggers.
-- Execute endpoint now pre-checks USDC balance and skips positions gracefully; "Bundle simulation failed" root cause was oracle/pool price mismatch.
+- Execute endpoint now pre-checks USDC balance and skips positions gracefully.
 - Frontend now reads USDC/WETH balances directly from chain (independent of Rhinestone portfolio API) and warns when balance < DCA amount.
+- "Bundle simulation failed" root cause: session key was never authorized by the account owner. Fixed by adding Smart Sessions enable flow (user signs once on DCA activation, enable signature persisted in DB).
+- Session definition is now deterministic (no `Date.now()`): spending-limit policy only, same hash on frontend and backend.
+- Frontend now exposes `sessionGranted` status; shows explicit "Grant Session" button when position is active but session key not signed.
+- Execute endpoint no longer calls `markExecuted()` for session-not-granted positions — they retry on every CRE trigger until the user grants the session.

@@ -122,7 +122,14 @@
 - [x] Update session key permissions (`rhinestone-sessions.ts`):
   - `approve` on input token for DEX router
   - `exactInputSingle` on Uniswap V3 SwapRouter02
-  - Spending-limit + time-frame policies retained
+  - Spending-limit policy (deterministic, no time-frame — avoids non-deterministic session hash)
+- [x] Implement Smart Sessions enable flow (fix "Bundle simulation failed"):
+  - Root cause: session key was never authorized by account owner → orchestrator simulation rejected
+  - Frontend: `experimental_getSessionDetails` + `experimental_signEnableSession` on DCA activation
+  - DB: `session_enable_signature` + `session_hashes_and_chain_ids` columns on `dca_positions`
+  - Backend: passes `enableData` (user signature + hashes) in every `prepareTransaction` call
+  - Session definition is deterministic: frontend uses address, backend uses private key, same hash
+  - `NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS` env var exposes backend signer address to frontend
 - [x] Add contract address constants (network-switchable `web/src/lib/constants/networks.ts`):
   - Ethereum Sepolia active: USDC, WETH, Uniswap V3 SwapRouter02, Chainlink ETH/USD price feed
   - Base Sepolia config retained for easy switching
@@ -135,6 +142,8 @@
   - Deposit instructions with Circle faucet link
   - DCA strategy configuration (amount, interval, activate/pause)
   - Explorer link corrected to Ethereum Sepolia etherscan
+  - Session grant status exposed to UI: "Grant Session" button when active but session missing
+  - Execute endpoint no longer marks session-not-granted positions as executed (retries on next trigger)
 - [x] Create DCA strategy API (DB-backed):
   - `GET /api/dca/strategy?address=0x...` — load position for a smart account
   - `POST /api/dca/strategy` — save/update position (PostgreSQL `dca_positions` table)

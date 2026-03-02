@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, cookieToInitialState, type Config } from "wagmi";
 import { createAppKit } from "@reown/appkit/react";
 import { config, networks, projectId, wagmiAdapter } from "@/config";
-import { mainnet } from "@reown/appkit/networks";
+import { sepolia } from "@reown/appkit/networks";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +21,7 @@ if (projectId) {
     adapters: [wagmiAdapter],
     projectId,
     networks,
-    defaultNetwork: mainnet,
+    defaultNetwork: sepolia,
     metadata,
     features: {
       analytics: true,

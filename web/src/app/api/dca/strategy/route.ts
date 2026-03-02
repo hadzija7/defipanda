@@ -44,6 +44,8 @@ interface CreateStrategyRequest {
   dcaAmountUsdc: string;
   intervalSeconds: number;
   active: boolean;
+  sessionEnableSignature?: string;
+  sessionHashesAndChainIds?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
       dcaAmountUsdc,
       intervalSeconds,
       active,
+      sessionEnableSignature,
+      sessionHashesAndChainIds,
     } = body;
 
     if (!smartAccountAddress || !ownerAddress || !dcaAmountUsdc) {
@@ -79,12 +83,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (active && !sessionEnableSignature) {
+      return NextResponse.json(
+        { error: "sessionEnableSignature is required when activating DCA" },
+        { status: 400 },
+      );
+    }
+
     const position: DcaPosition = await upsertPosition({
       smartAccountAddress,
       ownerAddress,
       amountUsdc: dcaAmountUsdc,
       intervalSeconds,
       active: active ?? true,
+      sessionEnableSignature: sessionEnableSignature ?? null,
+      sessionHashesAndChainIds: sessionHashesAndChainIds ?? null,
     });
 
     return NextResponse.json({ ok: true, strategy: position });

@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useRhinestoneAccount, type TokenBalance, type OnChainBalances } from "@/hooks/useRhinestoneAccount";
+import { buildDcaSession } from "@/lib/wallet/rhinestone-sessions";
+import type { Address, Hex } from "viem";
+import { activeNetwork } from "@/lib/constants/networks";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -20,6 +23,7 @@ interface DcaPosition {
   lastExecutionTxHash: string | null;
   lastExecutionError: string | null;
   totalExecutions: number;
+  sessionGranted: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -221,12 +225,16 @@ function DcaStrategyForm({
   existingPosition,
   onSaved,
   usdcBalance,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rhinestoneAccount,
 }: {
   smartAccountAddress: string;
   ownerAddress: string;
   existingPosition: DcaPosition | null;
   onSaved: (position: DcaPosition) => void;
   usdcBalance: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rhinestoneAccount: any;
 }) {
   const [amount, setAmount] = useState(
     existingPosition ? formatUsdc(existingPosition.amountUsdc) : "10",
@@ -236,6 +244,8 @@ function DcaStrategyForm({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { chainId: walletChainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   async function handleSubmit(active: boolean) {
     const smallest = usdcToSmallest(amount);
@@ -248,6 +258,50 @@ function DcaStrategyForm({
     setError(null);
 
     try {
+      let sessionEnableSignature: string | undefined;
+      let sessionHashesAndChainIds: string | undefined;
+
+      if (active) {
+        if (walletChainId !== activeNetwork.chainId) {
+          try {
+            await switchChainAsync({ chainId: activeNetwork.chainId });
+          } catch {
+            // Embedded wallets don't support wallet_switchEthereumChain — safe to ignore
+          }
+        }
+
+        const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+        if (!backendSignerAddress) {
+          setError("Backend signer address not configured");
+          setSaving(false);
+          return;
+        }
+        if (!rhinestoneAccount) {
+          setError("Rhinestone account not ready");
+          setSaving(false);
+          return;
+        }
+
+        const session = buildDcaSession({
+          backendSigner: backendSignerAddress as Address,
+        });
+
+        const sessionDetails =
+          await rhinestoneAccount.experimental_getSessionDetails([session]);
+        const enableSig: Hex =
+          await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
+
+        sessionEnableSignature = enableSig;
+        sessionHashesAndChainIds = JSON.stringify(
+          sessionDetails.hashesAndChainIds.map(
+            (h: { chainId: bigint; sessionDigest: Hex }) => ({
+              chainId: h.chainId.toString(),
+              sessionDigest: h.sessionDigest,
+            }),
+          ),
+        );
+      }
+
       const res = await fetch("/api/dca/strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -257,6 +311,8 @@ function DcaStrategyForm({
           dcaAmountUsdc: smallest,
           intervalSeconds,
           active,
+          sessionEnableSignature,
+          sessionHashesAndChainIds,
         }),
       });
 
@@ -282,14 +338,20 @@ function DcaStrategyForm({
     <div className="flex flex-col gap-4">
       {/* Execution status banner */}
       {pos && (
-        <div className={`rounded-lg p-3 ${isActive ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-zinc-50 dark:bg-zinc-800/50"}`}>
+        <div className={`rounded-lg p-3 ${isActive && pos.sessionGranted ? "bg-emerald-50 dark:bg-emerald-950/30" : isActive && !pos.sessionGranted ? "bg-amber-50 dark:bg-amber-950/30" : "bg-zinc-50 dark:bg-zinc-800/50"}`}>
           <div className="flex items-center gap-2 text-sm font-medium">
-            <StatusDot color={isActive ? "green" : "amber"} />
-            <span>{isActive ? "Active" : "Paused"}</span>
+            <StatusDot color={isActive && pos.sessionGranted ? "green" : isActive ? "amber" : "amber"} />
+            <span>{isActive && pos.sessionGranted ? "Active" : isActive ? "Session Required" : "Paused"}</span>
             <span className="ml-auto text-xs font-normal text-zinc-500 dark:text-zinc-400">
               {formatUsdc(pos.amountUsdc)} USDC {formatInterval(pos.intervalSeconds).toLowerCase()}
             </span>
           </div>
+
+          {isActive && !pos.sessionGranted && (
+            <div className="mt-2 rounded bg-amber-100 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+              DCA is active but your wallet has not signed a session key yet. Click &quot;Grant Session&quot; below to authorize automated swaps.
+            </div>
+          )}
 
           <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
             <span>Total executions</span>
@@ -397,7 +459,26 @@ function DcaStrategyForm({
 
       {/* Actions */}
       <div className="flex gap-3">
-        {!isActive ? (
+        {isActive && !existingPosition?.sessionGranted ? (
+          <>
+            <button
+              onClick={() => handleSubmit(true)}
+              disabled={saving}
+              type="button"
+              className="rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Signing..." : "Grant Session"}
+            </button>
+            <button
+              onClick={() => handleSubmit(false)}
+              disabled={saving}
+              type="button"
+              className="rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Pause DCA
+            </button>
+          </>
+        ) : !isActive ? (
           <button
             onClick={() => handleSubmit(true)}
             disabled={saving}
@@ -439,6 +520,7 @@ export default function Home() {
   const appKitAccount = useAppKitAccount();
   const wagmiAccount = useAccount();
   const {
+    rhinestoneAccount,
     accountAddress: rhinestoneAddress,
     portfolio: rhinestonePortfolio,
     onChainBalances,
@@ -599,6 +681,7 @@ export default function Home() {
                     existingPosition={position}
                     onSaved={(p) => setPosition(p)}
                     usdcBalance={onChainBalances?.usdc ?? null}
+                    rhinestoneAccount={rhinestoneAccount}
                   />
                 )}
               </Card>

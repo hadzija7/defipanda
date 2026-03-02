@@ -71,7 +71,7 @@ function getChainName(chainId: number): string {
 
 export function useRhinestoneAccount() {
   const { address, isConnected } = useAccount();
-  const { data: walletClient } = useWalletClient();
+  const { data: walletClient } = useWalletClient({ chainId: activeNetwork.chainId });
   const [state, setState] = useState<RhinestoneAccountState>({
     rhinestoneAccount: null,
     accountAddress: null,

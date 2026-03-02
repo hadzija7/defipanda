@@ -16,6 +16,9 @@ export type DcaPosition = {
   lastExecutionTxHash: string | null;
   lastExecutionError: string | null;
   totalExecutions: number;
+  sessionEnableSignature: string | null;
+  sessionHashesAndChainIds: string | null;
+  sessionGranted: boolean;
   createdAt: number;
   updatedAt: number;
 };
@@ -31,6 +34,8 @@ type DcaPositionRow = {
   last_execution_tx_hash: string | null;
   last_execution_error: string | null;
   total_executions: number;
+  session_enable_signature: string | null;
+  session_hashes_and_chain_ids: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -47,6 +52,9 @@ function rowToPosition(row: DcaPositionRow): DcaPosition {
     lastExecutionTxHash: row.last_execution_tx_hash,
     lastExecutionError: row.last_execution_error,
     totalExecutions: row.total_executions,
+    sessionEnableSignature: row.session_enable_signature,
+    sessionHashesAndChainIds: row.session_hashes_and_chain_ids,
+    sessionGranted: !!(row.session_enable_signature && row.session_hashes_and_chain_ids),
     createdAt: row.created_at.getTime(),
     updatedAt: row.updated_at.getTime(),
   };
@@ -54,7 +62,8 @@ function rowToPosition(row: DcaPositionRow): DcaPosition {
 
 const SELECT_COLS = `id, smart_account_address, owner_address, amount_usdc,
   interval_seconds, active, last_executed_at, last_execution_tx_hash,
-  last_execution_error, total_executions, created_at, updated_at`;
+  last_execution_error, total_executions, session_enable_signature,
+  session_hashes_and_chain_ids, created_at, updated_at`;
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -107,16 +116,21 @@ export async function upsertPosition(input: {
   amountUsdc: string;
   intervalSeconds: number;
   active: boolean;
+  sessionEnableSignature?: string | null;
+  sessionHashesAndChainIds?: string | null;
 }): Promise<DcaPosition> {
   const id = randomUUID();
   const { rows } = await query<DcaPositionRow>(
-    `INSERT INTO dca_positions (id, smart_account_address, owner_address, amount_usdc, interval_seconds, active, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO dca_positions (id, smart_account_address, owner_address, amount_usdc,
+       interval_seconds, active, session_enable_signature, session_hashes_and_chain_ids, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
      ON CONFLICT (smart_account_address) DO UPDATE
        SET amount_usdc = EXCLUDED.amount_usdc,
            interval_seconds = EXCLUDED.interval_seconds,
            active = EXCLUDED.active,
            owner_address = EXCLUDED.owner_address,
+           session_enable_signature = COALESCE(EXCLUDED.session_enable_signature, dca_positions.session_enable_signature),
+           session_hashes_and_chain_ids = COALESCE(EXCLUDED.session_hashes_and_chain_ids, dca_positions.session_hashes_and_chain_ids),
            updated_at = NOW()
      RETURNING ${SELECT_COLS}`,
     [
@@ -126,6 +140,8 @@ export async function upsertPosition(input: {
       input.amountUsdc,
       input.intervalSeconds,
       input.active,
+      input.sessionEnableSignature ?? null,
+      input.sessionHashesAndChainIds ?? null,
     ],
   );
   return rowToPosition(rows[0]);

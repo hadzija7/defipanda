@@ -133,6 +133,14 @@ Rhinestone session key custody:
 - After execution, `markExecuted()` updates `last_executed_at`, `total_executions`, and tx hash/error
 - One position per smart account (unique index on `smart_account_address`)
 
+### Session Key Authorization (Smart Sessions)
+- User grants a scoped DCA session on first activation via `experimental_signEnableSession`
+- Session definition: `approve(USDC)` + `exactInputSingle(SwapRouter02)` with spending-limit policy
+- Enable signature + session hashes stored in `dca_positions` table
+- Backend passes `enableData` (user signature + hashes) in every `prepareTransaction` call
+- Session is deterministic: frontend builds with backend signer address, backend builds with private key — both produce identical session hashes
+- Uses Rhinestone "enable mode": session is enabled + used atomically on first execution
+
 ### Double-Execution Prevention
 - CRE: `cacheSettings` with short `maxAge` (10s) deduplicates across DON nodes within a single trigger
 - DB: `getDuePositions()` interval check (`NOW() - last_executed_at >= interval_seconds`) is the sole dedup mechanism on the backend; `markExecuted()` updates `last_executed_at` immediately after each swap
@@ -156,8 +164,7 @@ After Option B is proven, explore moving signing into CRE itself:
 2. Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia — needs testnet verification.
 3. Monitoring stack selection and alert channels.
 4. Deployment model (environments, secrets handling, promotion flow).
-5. Production-grade idempotency store (currently in-memory, needs Redis/DB).
-6. Production job queue for sequential nonce management across concurrent users.
+5. Production job queue for sequential nonce management across concurrent users.
 
 ## Initial Conventions
 - Keep all workflow secrets out of source control.

@@ -177,6 +177,19 @@ export async function POST(request: NextRequest) {
           `actualMinOutput=0 (testnet) fee=${activeNetwork.uniswapV3PoolFee}`,
         );
 
+        if (!position.sessionEnableSignature || !position.sessionHashesAndChainIds) {
+          const errorMsg = "Session not granted: user must activate DCA from the frontend first";
+          console.warn(`Skipping position ${position.id}: ${errorMsg}`);
+          results.push({
+            positionId: position.id,
+            user: position.smartAccountAddress,
+            amountIn: amountIn.toString(),
+            txHash: null,
+            error: errorMsg,
+          });
+          continue;
+        }
+
         const rhinestoneAccount = await rhinestone.createAccount({
           initData: { address: position.smartAccountAddress as Address },
           owners: {
@@ -192,6 +205,19 @@ export async function POST(request: NextRequest) {
           inputTokenAddress: activeNetwork.usdc,
           swapRouterAddress: activeNetwork.uniswapV3SwapRouter02,
         });
+
+        const storedHashes = JSON.parse(position.sessionHashesAndChainIds) as Array<{
+          chainId: string;
+          sessionDigest: string;
+        }>;
+        const enableData = {
+          userSignature: position.sessionEnableSignature as Hex,
+          hashesAndChainIds: storedHashes.map((h) => ({
+            chainId: BigInt(h.chainId),
+            sessionDigest: h.sessionDigest as Hex,
+          })),
+          sessionToEnableIndex: 0,
+        };
 
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
@@ -215,7 +241,6 @@ export async function POST(request: NextRequest) {
           ],
         });
 
-        // prepare → sign → submit (sendTransaction blocks experimental_session signers)
         const prepared = await rhinestoneAccount.prepareTransaction({
           chain,
           calls: [
@@ -225,6 +250,7 @@ export async function POST(request: NextRequest) {
           signers: {
             type: "experimental_session" as const,
             session,
+            enableData,
           },
         });
 

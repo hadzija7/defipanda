@@ -106,9 +106,19 @@ async function initializeSchema(): Promise<void> {
         last_execution_tx_hash TEXT,
         last_execution_error TEXT,
         total_executions INTEGER NOT NULL DEFAULT 0,
+        session_enable_signature TEXT,
+        session_hashes_and_chain_ids TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS session_enable_signature TEXT;
+        ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS session_hashes_and_chain_ids TEXT;
+      EXCEPTION WHEN duplicate_column THEN NULL;
+      END $$;
     `);
 
     await client.query(`
