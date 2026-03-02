@@ -197,6 +197,7 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
 - `NEXT_PUBLIC_ZERODEV_PROJECT_ID` (required when `AUTH_PROVIDER=zerodev_social`)
 - `NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER` (optional: `google` default, `facebook`)
 - `NEXT_PUBLIC_ZERODEV_CHAIN_ID` (optional: chain ID for ZeroDev social, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_ZERODEV_RPC_URL` (recommended for client-side ZeroDev social/bundler transport; falls back to `ZERODEV_RPC_URL`)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required when `AUTH_PROVIDER=walletconnect`)
 - `NEXT_PUBLIC_WALLETCONNECT_CHAIN_ID` (optional: chain ID for WalletConnect, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
 
@@ -265,10 +266,15 @@ Status: Implemented
 - Integrate via the existing dual-plane adapter architecture without disrupting existing providers.
 
 ### Architecture
-- AppKit wraps the entire app via `AppKitProvider` in root layout (SSR cookie hydration via Wagmi).
+- AppKit is runtime-gated by `WalletProviderRoot` and only wraps the app when `AUTH_PROVIDER=reown_appkit` (SSR cookie hydration via Wagmi).
 - `<appkit-button>` web component provides the auth modal (social logins, email, wallets).
 - Client-side state managed via `useAppKitAccount` and `useAccount` hooks.
 - No server-side provisioning needed: AppKit creates embedded wallets as part of the login flow.
+- Non-Reown modes use a provider-status fallback screen on `src/app/page.tsx` to avoid Reown/Wagmi runtime crashes when Reown env vars are intentionally unset.
+- `zerodev_social` mode now uses `@zerodev/social-validator` (`initiateLogin`, `isAuthorized`, `getSocialValidator`) to derive a client-side Kernel account and display on-chain balances.
+- DCA submit/execution remains backed by Rhinestone session-key flow (`/api/dca/execute`), so ZeroDev mode currently provides wallet connectivity/read UX but not ZeroDev-based automated execution.
+- `/api/dca/execute` now uses modular executor routing (`rhinestone` vs `zerodev`) via env `DCA_EXECUTION_PROVIDER`; strategy rows are provider-scoped by `smart_account_provider`.
+- ZeroDev DCA activation now builds a permission plugin (`@zerodev/permissions`), captures plugin enable signature, and stores serialized permission-account payload in strategy for backend execution.
 
 ### Auth Provider Adapter
 | Provider | Server Session | Client Login | Smart Account Provisioning | Unified Wallet Auth |

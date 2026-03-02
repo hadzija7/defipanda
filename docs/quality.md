@@ -1,6 +1,6 @@
 # Quality Scorecard
 
-Last Updated: 2026-02-28
+Last Updated: 2026-03-02
 
 ## Domain Status
 | Domain | Spec | Code | Tests | Review | Overall |
@@ -38,3 +38,5 @@ Last Updated: 2026-02-28
 - Session definition is now deterministic (no `Date.now()`): spending-limit policy only, same hash on frontend and backend.
 - Frontend now exposes `sessionGranted` status; shows explicit "Grant Session" button when position is active but session key not signed.
 - Execute endpoint no longer calls `markExecuted()` for session-not-granted positions — they retry on every CRE trigger until the user grants the session.
+- DCA execution is now modular (`rhinestone` vs `zerodev`) but provider-specific test coverage is missing.
+- ZeroDev social automation now uses permissions/session-key serialization, but end-to-end reliability tests are still missing across redeploy/migration scenarios.

@@ -98,6 +98,7 @@ async function initializeSchema(): Promise<void> {
       CREATE TABLE IF NOT EXISTS dca_positions (
         id TEXT PRIMARY KEY,
         smart_account_address TEXT NOT NULL,
+        smart_account_provider TEXT NOT NULL DEFAULT 'reown_appkit',
         owner_address TEXT NOT NULL,
         amount_usdc TEXT NOT NULL,
         interval_seconds INTEGER NOT NULL,
@@ -108,6 +109,7 @@ async function initializeSchema(): Promise<void> {
         total_executions INTEGER NOT NULL DEFAULT 0,
         session_enable_signature TEXT,
         session_hashes_and_chain_ids TEXT,
+        zerodev_permission_account TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -117,13 +119,35 @@ async function initializeSchema(): Promise<void> {
       DO $$ BEGIN
         ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS session_enable_signature TEXT;
         ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS session_hashes_and_chain_ids TEXT;
+        ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS smart_account_provider TEXT;
+        ALTER TABLE dca_positions ADD COLUMN IF NOT EXISTS zerodev_permission_account TEXT;
       EXCEPTION WHEN duplicate_column THEN NULL;
       END $$;
     `);
 
     await client.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_dca_positions_smart_account
-      ON dca_positions (smart_account_address);
+      UPDATE dca_positions
+      SET smart_account_provider = 'reown_appkit'
+      WHERE smart_account_provider IS NULL OR smart_account_provider = '';
+    `);
+
+    await client.query(`
+      ALTER TABLE dca_positions
+      ALTER COLUMN smart_account_provider SET DEFAULT 'reown_appkit';
+    `);
+
+    await client.query(`
+      ALTER TABLE dca_positions
+      ALTER COLUMN smart_account_provider SET NOT NULL;
+    `);
+
+    await client.query(`
+      DROP INDEX IF EXISTS idx_dca_positions_smart_account;
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_dca_positions_smart_account_provider
+      ON dca_positions (smart_account_address, smart_account_provider);
     `);
 
     await client.query(`

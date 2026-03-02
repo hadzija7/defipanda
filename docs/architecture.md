@@ -84,6 +84,9 @@ Reown AppKit provides a unified client-side solution for social login + embedded
 - `AUTH_PROVIDER` env var selects auth provider (`google_oidc` default, `zerodev_social`, `walletconnect`, `reown_appkit`)
 - `SMART_ACCOUNT_PROVIDER` env var selects smart account provider (`zerodev` default, `walletconnect`, `reown_appkit`)
 - Adapters are registered at startup and resolved through facade APIs
+- `WalletProviderRoot` in app layout mounts Reown AppKit/Wagmi only when `AUTH_PROVIDER=reown_appkit`
+- Non-Reown modes render a safe provider-status UI for the DCA page instead of hard failing on missing Reown env vars
+- `zerodev_social` mode now initializes client-side social auth via `@zerodev/social-validator` and derives a Kernel account address for read-only wallet UX (balances + address)
 
 ### Extension Points
 - New providers implement `IAuthProviderAdapter` or `ISmartAccountProviderAdapter`
@@ -140,6 +143,15 @@ Rhinestone session key custody:
 - Backend passes `enableData` (user signature + hashes) in every `prepareTransaction` call
 - Session is deterministic: frontend builds with backend signer address, backend builds with private key — both produce identical session hashes
 - Uses Rhinestone "enable mode": session is enabled + used atomically on first execution
+
+### Modular Execution Engine Switching
+- `/api/dca/execute` delegates to provider-specific executors selected by env:
+  - `DCA_EXECUTION_PROVIDER=rhinestone` (default when `SMART_ACCOUNT_PROVIDER=reown_appkit`)
+  - `DCA_EXECUTION_PROVIDER=zerodev` (default when `SMART_ACCOUNT_PROVIDER=zerodev`)
+- Executors are implemented as separate modules under `web/src/lib/dca/executors/`
+- Due-position selection is provider-scoped via `dca_positions.smart_account_provider`
+- Strategy records are isolated per provider using unique key `(smart_account_address, smart_account_provider)`
+- ZeroDev social flow generates/stores serialized permission accounts (`zerodev_permission_account`) and backend execution deserializes them with backend session signer for automated swaps
 
 ### Double-Execution Prevention
 - CRE: `cacheSettings` with short `maxAge` (10s) deduplicates across DON nodes within a single trigger

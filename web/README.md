@@ -43,6 +43,8 @@ Optional:
 - `NEXT_PUBLIC_ZERODEV_PROJECT_ID` (required when `AUTH_PROVIDER=zerodev_social`)
 - `NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER` (`google` default, supports `facebook`)
 - `NEXT_PUBLIC_ZERODEV_CHAIN_ID` (chain ID for ZeroDev social, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_ZERODEV_RPC_URL` (recommended for browser-side ZeroDev social flow)
+- `ZERODEV_RPC_URL` (server-side ZeroDev bundler/executor RPC; set equal to `NEXT_PUBLIC_ZERODEV_RPC_URL` unless you intentionally split endpoints)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required when `AUTH_PROVIDER=walletconnect`)
 - `NEXT_PUBLIC_WALLETCONNECT_CHAIN_ID` (chain ID for WalletConnect, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
 - `RHINESTONE_API_KEY` (server-side only; required for Rhinestone smart account + session keys)

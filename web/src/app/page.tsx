@@ -3,10 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { useAccount, useSwitchChain } from "wagmi";
-import { useRhinestoneAccount, type TokenBalance, type OnChainBalances } from "@/hooks/useRhinestoneAccount";
+import {
+  useSmartAccount,
+  type TokenBalance,
+  type OnChainBalances,
+} from "@/hooks/useSmartAccount";
+import { useZeroDevSocialAccount } from "@/hooks/useZeroDevSocialAccount";
 import { buildDcaSession } from "@/lib/wallet/rhinestone-sessions";
 import type { Address, Hex } from "viem";
 import { activeNetwork } from "@/lib/constants/networks";
+import { useWalletRuntime } from "@/context/wallet-provider-root";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -15,6 +21,7 @@ import { activeNetwork } from "@/lib/constants/networks";
 interface DcaPosition {
   id: string;
   smartAccountAddress: string;
+  smartAccountProvider?: string;
   ownerAddress: string;
   amountUsdc: string;
   intervalSeconds: number;
@@ -24,6 +31,7 @@ interface DcaPosition {
   lastExecutionError: string | null;
   totalExecutions: number;
   sessionGranted: boolean;
+  zerodevPermissionAccount?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -221,20 +229,26 @@ function PortfolioView({
 
 function DcaStrategyForm({
   smartAccountAddress,
+  smartAccountProvider,
   ownerAddress,
   existingPosition,
   onSaved,
   usdcBalance,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rhinestoneAccount,
+  onPrepareZeroDevPermissionAccount,
 }: {
   smartAccountAddress: string;
+  smartAccountProvider: string;
   ownerAddress: string;
   existingPosition: DcaPosition | null;
   onSaved: (position: DcaPosition) => void;
   usdcBalance: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rhinestoneAccount: any;
+  rhinestoneAccount?: any;
+  onPrepareZeroDevPermissionAccount?: (
+    sessionSignerAddress: `0x${string}`,
+  ) => Promise<string>;
 }) {
   const [amount, setAmount] = useState(
     existingPosition ? formatUsdc(existingPosition.amountUsdc) : "10",
@@ -260,46 +274,65 @@ function DcaStrategyForm({
     try {
       let sessionEnableSignature: string | undefined;
       let sessionHashesAndChainIds: string | undefined;
+      let zerodevPermissionAccount: string | undefined;
 
       if (active) {
-        if (walletChainId !== activeNetwork.chainId) {
-          try {
-            await switchChainAsync({ chainId: activeNetwork.chainId });
-          } catch {
-            // Embedded wallets don't support wallet_switchEthereumChain — safe to ignore
+        if (smartAccountProvider === "reown_appkit") {
+          if (walletChainId !== activeNetwork.chainId) {
+            try {
+              await switchChainAsync({ chainId: activeNetwork.chainId });
+            } catch {
+              // Embedded wallets don't support wallet_switchEthereumChain — safe to ignore
+            }
           }
+
+          const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+          if (!backendSignerAddress) {
+            setError("Backend signer address not configured");
+            setSaving(false);
+            return;
+          }
+          if (!rhinestoneAccount) {
+            setError("Rhinestone account not ready");
+            setSaving(false);
+            return;
+          }
+
+          const session = buildDcaSession({
+            backendSigner: backendSignerAddress as Address,
+          });
+
+          const sessionDetails =
+            await rhinestoneAccount.experimental_getSessionDetails([session]);
+          const enableSig: Hex =
+            await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
+
+          sessionEnableSignature = enableSig;
+          sessionHashesAndChainIds = JSON.stringify(
+            sessionDetails.hashesAndChainIds.map(
+              (h: { chainId: bigint; sessionDigest: Hex }) => ({
+                chainId: h.chainId.toString(),
+                sessionDigest: h.sessionDigest,
+              }),
+            ),
+          );
+        } else if (smartAccountProvider === "zerodev") {
+          const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+          if (!backendSignerAddress) {
+            setError("Backend signer address not configured");
+            setSaving(false);
+            return;
+          }
+          if (!onPrepareZeroDevPermissionAccount) {
+            setError("ZeroDev permission preparation is not available");
+            setSaving(false);
+            return;
+          }
+
+          zerodevPermissionAccount = await onPrepareZeroDevPermissionAccount(
+            backendSignerAddress as `0x${string}`,
+          );
         }
-
-        const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
-        if (!backendSignerAddress) {
-          setError("Backend signer address not configured");
-          setSaving(false);
-          return;
-        }
-        if (!rhinestoneAccount) {
-          setError("Rhinestone account not ready");
-          setSaving(false);
-          return;
-        }
-
-        const session = buildDcaSession({
-          backendSigner: backendSignerAddress as Address,
-        });
-
-        const sessionDetails =
-          await rhinestoneAccount.experimental_getSessionDetails([session]);
-        const enableSig: Hex =
-          await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
-
-        sessionEnableSignature = enableSig;
-        sessionHashesAndChainIds = JSON.stringify(
-          sessionDetails.hashesAndChainIds.map(
-            (h: { chainId: bigint; sessionDigest: Hex }) => ({
-              chainId: h.chainId.toString(),
-              sessionDigest: h.sessionDigest,
-            }),
-          ),
-        );
       }
 
       const res = await fetch("/api/dca/strategy", {
@@ -307,12 +340,14 @@ function DcaStrategyForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           smartAccountAddress,
+          smartAccountProvider,
           ownerAddress,
           dcaAmountUsdc: smallest,
           intervalSeconds,
           active,
           sessionEnableSignature,
           sessionHashesAndChainIds,
+          zerodevPermissionAccount,
         }),
       });
 
@@ -516,7 +551,8 @@ function DcaStrategyForm({
 // Main Page
 // ---------------------------------------------------------------------------
 
-export default function Home() {
+function ReownHome() {
+  const { authProvider } = useWalletRuntime();
   const appKitAccount = useAppKitAccount();
   const wagmiAccount = useAccount();
   const {
@@ -527,7 +563,7 @@ export default function Home() {
     isLoading: rhinestoneLoading,
     error: rhinestoneError,
     refreshPortfolio,
-  } = useRhinestoneAccount();
+  } = useSmartAccount();
 
   const isConnected = appKitAccount.isConnected && !!appKitAccount.address;
 
@@ -538,7 +574,9 @@ export default function Home() {
     if (!rhinestoneAddress) return;
     setPositionLoading(true);
     try {
-      const res = await fetch(`/api/dca/strategy?address=${rhinestoneAddress}`);
+      const res = await fetch(
+        `/api/dca/strategy?address=${rhinestoneAddress}&provider=${authProvider}`,
+      );
       const body = await res.json();
       setPosition(body.strategy ?? null);
     } catch {
@@ -546,7 +584,7 @@ export default function Home() {
     } finally {
       setPositionLoading(false);
     }
-  }, [rhinestoneAddress]);
+  }, [authProvider, rhinestoneAddress]);
 
   useEffect(() => {
     if (rhinestoneAddress) {
@@ -677,6 +715,7 @@ export default function Home() {
                 ) : (
                   <DcaStrategyForm
                     smartAccountAddress={rhinestoneAddress}
+                    smartAccountProvider={authProvider}
                     ownerAddress={appKitAccount.address}
                     existingPosition={position}
                     onSaved={(p) => setPosition(p)}
@@ -696,4 +735,189 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+function ZeroDevHome() {
+  const {
+    accountAddress,
+    onChainBalances,
+    isAuthorized,
+    isLoading,
+    error,
+    login,
+    disconnect,
+    refreshOnChainBalances,
+    preparePermissionAccount,
+  } = useZeroDevSocialAccount();
+
+  const [position, setPosition] = useState<DcaPosition | null>(null);
+  const [positionLoading, setPositionLoading] = useState(false);
+
+  const loadPosition = useCallback(async () => {
+    if (!accountAddress) return;
+    setPositionLoading(true);
+    try {
+      const res = await fetch(
+        `/api/dca/strategy?address=${accountAddress}&provider=zerodev`,
+      );
+      const body = await res.json();
+      setPosition(body.strategy ?? null);
+    } catch {
+      // ignore
+    } finally {
+      setPositionLoading(false);
+    }
+  }, [accountAddress]);
+
+  useEffect(() => {
+    if (accountAddress) {
+      void loadPosition();
+    }
+  }, [accountAddress, loadPosition]);
+
+  return (
+    <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      <div className="mx-auto w-full max-w-lg">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Automated DCA on Chainlink CRE
+            </p>
+          </div>
+          {isAuthorized ? (
+            <button
+              onClick={disconnect}
+              type="button"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Logout
+            </button>
+          ) : (
+            <button
+              onClick={login}
+              disabled={isLoading}
+              type="button"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {isLoading ? "Connecting..." : "Login with ZeroDev"}
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Card>
+            <SectionTitle>Smart Account</SectionTitle>
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <StatusDot color="amber" />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Initializing ZeroDev account...
+                </span>
+              </div>
+            ) : error ? (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                {error}
+              </div>
+            ) : accountAddress ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <StatusDot color="green" />
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    ZeroDev Kernel smart account
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Address
+                  </span>
+                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                    {accountAddress}
+                  </code>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                Use &quot;Login with ZeroDev&quot; to connect your social smart account.
+              </div>
+            )}
+          </Card>
+
+          {accountAddress && (
+            <Card>
+              <SectionTitle>Balances</SectionTitle>
+              <OnChainBalancesView
+                balances={onChainBalances}
+                onRefresh={() => void refreshOnChainBalances()}
+              />
+            </Card>
+          )}
+
+          {accountAddress && (
+            <Card>
+              <SectionTitle>DCA Strategy</SectionTitle>
+              {positionLoading ? (
+                <div className="flex items-center gap-2 py-4">
+                  <StatusDot color="amber" />
+                  <span className="text-xs text-zinc-500">Loading strategy...</span>
+                </div>
+              ) : (
+                <DcaStrategyForm
+                  smartAccountAddress={accountAddress}
+                  smartAccountProvider="zerodev"
+                  ownerAddress={accountAddress}
+                  existingPosition={position}
+                  onSaved={(p) => setPosition(p)}
+                  usdcBalance={onChainBalances?.usdc ?? null}
+                  onPrepareZeroDevPermissionAccount={preparePermissionAccount}
+                />
+              )}
+            </Card>
+          )}
+        </div>
+
+        <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+          {activeNetwork.name} testnet only. No real funds.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProviderNotEnabledView({ provider }: { provider: string }) {
+  return (
+    <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      <div className="mx-auto w-full max-w-lg">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Automated DCA on Chainlink CRE
+          </p>
+        </div>
+
+        <Card>
+          <SectionTitle>Wallet Provider</SectionTitle>
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+            Active auth provider is <code>{provider}</code>. The DCA UI currently
+            supports Reown + Rhinestone runtime only. Switch to{" "}
+            <code>AUTH_PROVIDER=reown_appkit</code> to use the live DCA flow.
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { isReown, authProvider } = useWalletRuntime();
+
+  if (authProvider === "zerodev_social") {
+    return <ZeroDevHome />;
+  }
+
+  if (!isReown) {
+    return <ProviderNotEnabledView provider={authProvider} />;
+  }
+
+  return <ReownHome />;
 }

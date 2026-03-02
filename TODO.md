@@ -84,6 +84,7 @@
 - [x] Add `reown_appkit` smart account provider adapter implementing `ISmartAccountProviderAdapter` (client-side wallet).
 - [x] Register both adapters in setup modules and update type unions, registries, and barrel exports.
 - [x] Update root layout to wrap app in `AppKitProvider` with SSR cookie hydration.
+- [x] Add `WalletProviderRoot` runtime gate so AppKit/Wagmi mounts only when `AUTH_PROVIDER=reown_appkit`.
 - [x] Add TypeScript global declarations for `<appkit-button>` web component.
 - [x] Update frontend page to show `<appkit-button>` when `AUTH_PROVIDER=reown_appkit` and display connected wallet info.
 - [x] Update docs: architecture, quality scorecard, README, and specs.
@@ -119,6 +120,9 @@
   - USDC balance pre-check per position (skip gracefully on insufficient funds)
   - Testnet-safe `amountOutMinimum=0` (oracle/pool price divergence on Sepolia)
   - Rhinestone SDK error context captured in logs and stored error messages
+  - Modular execution engine switch via env (`DCA_EXECUTION_PROVIDER`: `rhinestone` | `zerodev`)
+  - Provider-scoped due-position execution (`smart_account_provider`)
+  - ZeroDev permissions path: deserialize/execute stored permission accounts for social-owned Kernel wallets
 - [x] Update session key permissions (`rhinestone-sessions.ts`):
   - `approve` on input token for DEX router
   - `exactInputSingle` on Uniswap V3 SwapRouter02
@@ -144,12 +148,17 @@
   - Explorer link corrected to Ethereum Sepolia etherscan
   - Session grant status exposed to UI: "Grant Session" button when active but session missing
   - Execute endpoint no longer marks session-not-granted positions as executed (retries on next trigger)
+  - Non-Reown auth modes now show a provider status screen instead of crashing on missing Reown env
+  - `zerodev_social` mode now supports client-side social login + Kernel address derivation + on-chain balance view
+  - ZeroDev login callback URL normalized to `${origin}/`; client transport now prefers `NEXT_PUBLIC_ZERODEV_RPC_URL`
 - [x] Create DCA strategy API (DB-backed):
   - `GET /api/dca/strategy?address=0x...` — load position for a smart account
   - `POST /api/dca/strategy` — save/update position (PostgreSQL `dca_positions` table)
   - DCA store module (`web/src/lib/dca/store.ts`) with typed CRUD operations
   - `/api/dca/execute` reads due positions from DB, checks interval + last_executed_at
   - `markExecuted()` updates last_executed_at, tx hash, error, and total_executions
+  - DCA positions now include `smart_account_provider` to isolate strategies by account stack
+  - DCA strategy now persists `zerodev_permission_account` payload for ZeroDev session-key execution
 - [ ] Simulate end-to-end: `cre workflow simulate dca-workflow --target staging-settings`
 - [x] Update docs: architecture, CRE workflows spec, quality scorecard, TODO
 

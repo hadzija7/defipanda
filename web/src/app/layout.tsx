@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
-import AppKitProvider from "@/context";
+import { WalletProviderRoot } from "@/context/wallet-provider-root";
+import { normalizeRuntimeAuthProvider } from "@/lib/runtime/provider-selection";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,13 +27,16 @@ export default async function RootLayout({
 }>) {
   const headersObj = await headers();
   const cookies = headersObj.get("cookie");
+  const authProvider = normalizeRuntimeAuthProvider(process.env.AUTH_PROVIDER);
 
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppKitProvider cookies={cookies}>{children}</AppKitProvider>
+        <WalletProviderRoot cookies={cookies} authProvider={authProvider}>
+          {children}
+        </WalletProviderRoot>
       </body>
     </html>
   );

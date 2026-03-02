@@ -110,9 +110,9 @@ DefiPanda is an automated Dollar-Cost Averaging (DCA) platform built on Chainlin
 
 | Concern | Implementation | Files |
 |---------|---------------|-------|
-| Auth UI | Reown AppKit `<appkit-button>` web component | `src/app/page.tsx`, `src/app/layout.tsx` |
-| AppKit config | Wagmi adapter, SSR cookie hydration, social login features | `src/config/index.tsx`, `src/context/index.tsx` |
-| Smart account | `useRhinestoneAccount` hook wraps AppKit signer into ERC-7579 account | `src/hooks/useRhinestoneAccount.ts` |
+| Auth UI | Reown AppKit `<appkit-button>` (Reown mode), ZeroDev social login button (ZeroDev mode), provider-status fallback (other modes) | `src/app/page.tsx`, `src/app/layout.tsx` |
+| AppKit config | Wagmi adapter, SSR cookie hydration, social login features (mounted only when `AUTH_PROVIDER=reown_appkit`) | `src/config/index.tsx`, `src/context/index.tsx`, `src/context/wallet-provider-root.tsx` |
+| Smart account | `useRhinestoneAccount` wraps AppKit signer into ERC-7579 (Reown mode); `useZeroDevSocialAccount` derives Kernel account from social validator (ZeroDev mode) | `src/hooks/useRhinestoneAccount.ts`, `src/hooks/useZeroDevSocialAccount.ts` |
 | Portfolio view | Cross-chain balance display from Rhinestone orchestrator | `src/hooks/useRhinestoneAccount.ts`, `src/app/page.tsx` |
 | DCA form | Amount, interval, activate/pause, execution history display | `src/app/page.tsx` |
 | TypeScript declarations | `<appkit-button>` web component type | `src/global.d.ts` |
@@ -223,7 +223,13 @@ Two independent provider planes with facade pattern:
 | `sessions` | `session_id` → `user_sub` | Server-side session store |
 | `auth_flows` | `state` (PK) | Transient OIDC flow context (PKCE, nonce) |
 | `smart_account_linkages` | (`user_sub`, `chain_id`, `provider`) UNIQUE | Wallet ↔ user binding |
-| `dca_positions` | `smart_account_address` UNIQUE | DCA strategy per smart account |
+| `dca_positions` | (`smart_account_address`, `smart_account_provider`) UNIQUE | DCA strategy per smart account stack |
+
+Provider-scoping update:
+- `dca_positions` now includes `smart_account_provider` (`reown_appkit` or `zerodev`)
+- Unique key is `(smart_account_address, smart_account_provider)` so strategies do not collide across account stacks
+- `/api/dca/execute` only executes due positions matching the active execution provider
+- `dca_positions` includes `zerodev_permission_account` for serialized ZeroDev permission/session-key payloads
 
 #### 3.1.6 Contract Constants
 
@@ -347,7 +353,7 @@ See section 3.1.5 for table details.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_REOWN_PROJECT_ID` | Yes | Reown/WalletConnect Cloud project ID |
+| `NEXT_PUBLIC_REOWN_PROJECT_ID` | Reown mode only | Reown/WalletConnect Cloud project ID (`AUTH_PROVIDER=reown_appkit`) |
 | `RHINESTONE_API_KEY` | Yes | Rhinestone orchestrator API key (server-side only) |
 | `SMART_ACCOUNT_OWNER_PRIVATE_KEY` | Yes | Backend signer private key for session key DCA execution |
 | `CRE_BACKEND_AUTH_TOKEN` | Yes | Token CRE uses to authenticate with backend |
@@ -357,6 +363,7 @@ See section 3.1.5 for table details.
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Google path | Google OIDC client secret |
 | `AUTH_PROVIDER` | No | Auth provider selection (default: `reown_appkit`) |
 | `SMART_ACCOUNT_PROVIDER` | No | Smart account provider (default: `reown_appkit`) |
+| `DCA_EXECUTION_PROVIDER` | No | Execution engine override (`rhinestone` or `zerodev`); defaults from `SMART_ACCOUNT_PROVIDER` |
 | `DATABASE_SSL` | No | Set `true` for managed Postgres requiring TLS |
 | `APP_BASE_URL` | No | Override base URL (defaults to request origin) |
 | `ALLOW_CRE_SIMULATE` | No | Enable local CRE simulation endpoint |

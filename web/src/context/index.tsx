@@ -16,7 +16,7 @@ const metadata = {
   icons: ["/favicon.ico"],
 };
 
-if (projectId) {
+if (projectId && wagmiAdapter) {
   createAppKit({
     adapters: [wagmiAdapter],
     projectId,
@@ -40,6 +40,12 @@ export default function AppKitProvider({
   children: ReactNode;
   cookies: string | null;
 }) {
+  if (!projectId || !wagmiAdapter || !config) {
+    throw new Error(
+      "NEXT_PUBLIC_REOWN_PROJECT_ID is required when AUTH_PROVIDER=reown_appkit",
+    );
+  }
+
   const initialState = cookieToInitialState(config as Config, cookies);
 
   return (
