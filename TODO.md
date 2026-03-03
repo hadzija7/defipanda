@@ -175,6 +175,19 @@
 - [ ] Simulate end-to-end: `cre workflow simulate dca-workflow --target staging-settings`
 - [x] Update docs: architecture, CRE workflows spec, quality scorecard, TODO
 
+## Phase 9.5 - Docker Compose Self-Hosting
+- [x] Create `web/Dockerfile` (Next.js standalone build with multi-stage)
+- [x] Create `cre/Dockerfile` (Debian + CRE CLI + Bun for workflow deps)
+- [x] Create `cre/entrypoint.sh` (loop-based CRE simulation with backend health check)
+- [x] Create `docker-compose.yml` (postgres + web + cre-cron)
+- [x] Create `.env.docker` template with all required env vars
+- [x] Set Next.js `output: "standalone"` in `web/next.config.ts`
+- [x] Add root `.gitignore` and `.dockerignore` files
+- [x] Update architecture docs with deployment section
+- [ ] Test full `docker compose up --build` flow
+- [ ] Verify CRE CLI auth works headlessly (CRE_API_KEY)
+- [ ] Verify end-to-end: cre-cron → POST /api/dca/execute → Rhinestone swap
+
 ## Phase 10 - Hybrid CRE Execution (Experimental)
 - [ ] Verify viem noble-curves secp256k1 works in CRE QuickJS WASM runtime
 - [ ] If compatible: store session key as CRE secret, sign transactions inside CRE

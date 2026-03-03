@@ -1,0 +1,13 @@
+node_modules
+.next
+.pnpm-store
+.cursor
+.agents
+.git
+*.log
+*.env
+*.env.local
+cre/.env
+web/.env.local
+docs/
+specs/
