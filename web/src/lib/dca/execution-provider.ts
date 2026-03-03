@@ -1,9 +1,13 @@
 export type DcaExecutionProvider = "rhinestone" | "zerodev";
-export type SmartAccountProvider = "reown_appkit" | "zerodev" | "walletconnect";
+export type SmartAccountProvider =
+  | "reown_appkit"
+  | "privy"
+  | "zerodev"
+  | "walletconnect";
 
 export function getDefaultSmartAccountProvider(): SmartAccountProvider {
   const raw = process.env.SMART_ACCOUNT_PROVIDER;
-  if (raw === "reown_appkit" || raw === "walletconnect") {
+  if (raw === "reown_appkit" || raw === "walletconnect" || raw === "privy") {
     return raw;
   }
   return "zerodev";
@@ -19,7 +23,7 @@ export function resolveDcaExecutionProvider(): DcaExecutionProvider {
   }
 
   const smartAccountProvider = getDefaultSmartAccountProvider();
-  if (smartAccountProvider === "reown_appkit") {
+  if (smartAccountProvider === "reown_appkit" || smartAccountProvider === "privy") {
     return "rhinestone";
   }
   return "zerodev";

@@ -29,6 +29,8 @@ export {
   walletconnectSmartAccountAdapter,
   ReownAppKitSmartAccountAdapter,
   reownAppKitSmartAccountAdapter,
+  PrivySmartAccountAdapter,
+  privySmartAccountAdapter,
 } from "./adapters";
 
 export { initializeSmartAccountProviders } from "./setup";

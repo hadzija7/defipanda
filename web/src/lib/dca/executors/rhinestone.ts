@@ -14,6 +14,36 @@ import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
 import { getDuePositions, markExecuted } from "@/lib/dca/store";
 import type { CREExecutionRequest, ExecutionResponse, ExecutionResult } from "./types";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const orchestratorMod = require("@rhinestone/sdk/dist/src/orchestrator") as {
+  getOrchestrator: (apiKey: string, url: string) => {
+    getIntentOpStatus: (id: bigint) => Promise<{
+      status: string;
+      fillTransactionHash?: string;
+      claims: { claimTransactionHash?: string; chainId: number }[];
+    }>;
+  };
+};
+
+const TERMINAL_STATUSES = new Set(["COMPLETED", "FILLED", "FAILED", "EXPIRED"]);
+const INTENT_POLL_INTERVAL_MS = 3_000;
+const INTENT_POLL_MAX_MS = 120_000;
+
+async function waitForIntentFill(
+  apiKey: string,
+  endpointUrl: string,
+  intentId: bigint,
+): Promise<{ status: string; fillTransactionHash?: string }> {
+  const orchestrator = orchestratorMod.getOrchestrator(apiKey, endpointUrl);
+  const start = Date.now();
+  while (Date.now() - start < INTENT_POLL_MAX_MS) {
+    const s = await orchestrator.getIntentOpStatus(intentId);
+    if (TERMINAL_STATUSES.has(s.status)) return s;
+    await new Promise((r) => setTimeout(r, INTENT_POLL_INTERVAL_MS));
+  }
+  return { status: "TIMEOUT" };
+}
+
 function getRequiredEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
@@ -25,7 +55,11 @@ function getRequiredEnv(key: string): string {
 export async function executeRhinestoneDca(
   body: CREExecutionRequest,
 ): Promise<ExecutionResponse> {
-  const duePositions = await getDuePositions("reown_appkit");
+  const [reownDuePositions, privyDuePositions] = await Promise.all([
+    getDuePositions("reown_appkit"),
+    getDuePositions("privy"),
+  ]);
+  const duePositions = [...reownDuePositions, ...privyDuePositions];
   if (duePositions.length === 0) {
     return { ok: true, executionsTriggered: 0, results: [] };
   }
@@ -51,6 +85,22 @@ export async function executeRhinestoneDca(
 
   for (const position of duePositions) {
     try {
+      const accountCode = await publicClient.getCode({
+        address: position.smartAccountAddress as Address,
+      });
+      if (!accountCode || accountCode === "0x") {
+        const errorMsg = `Smart account not deployed: ${position.smartAccountAddress}. User must re-activate DCA from the frontend.`;
+        console.warn(`[rhinestone-executor] ${errorMsg}`);
+        results.push({
+          positionId: position.id,
+          user: position.smartAccountAddress,
+          amountIn: position.amountUsdc,
+          txHash: null,
+          error: errorMsg,
+        });
+        continue;
+      }
+
       const amountIn = BigInt(position.amountUsdc);
 
       const usdcBalance = await publicClient.readContract({
@@ -85,8 +135,8 @@ export async function executeRhinestoneDca(
           `oracleMinOutput=${formatUnits(referenceMinOutput, activeNetwork.wethDecimals)} WETH actualMinOutput=0`,
       );
 
-      if (!position.sessionEnableSignature || !position.sessionHashesAndChainIds) {
-        const errorMsg = "Session not granted: user must activate DCA from the frontend first";
+      if (!position.sessionEnableSignature) {
+        const errorMsg = "Session not installed: user must activate DCA from the frontend first";
         results.push({
           positionId: position.id,
           user: position.smartAccountAddress,
@@ -112,19 +162,6 @@ export async function executeRhinestoneDca(
         inputTokenAddress: activeNetwork.usdc,
         swapRouterAddress: activeNetwork.uniswapV3SwapRouter02,
       });
-
-      const storedHashes = JSON.parse(position.sessionHashesAndChainIds) as Array<{
-        chainId: string;
-        sessionDigest: string;
-      }>;
-      const enableData = {
-        userSignature: position.sessionEnableSignature as Hex,
-        hashesAndChainIds: storedHashes.map((h) => ({
-          chainId: BigInt(h.chainId),
-          sessionDigest: h.sessionDigest as Hex,
-        })),
-        sessionToEnableIndex: 0,
-      };
 
       const approveCalldata = encodeFunctionData({
         abi: erc20Abi,
@@ -157,27 +194,50 @@ export async function executeRhinestoneDca(
         signers: {
           type: "experimental_session" as const,
           session,
-          enableData,
         },
+        sponsored: true,
       });
 
       const signed = await rhinestoneAccount.signTransaction(prepared);
       const txResult = await rhinestoneAccount.submitTransaction(signed);
-      const executionResult = await rhinestoneAccount.waitForExecution(txResult);
 
-      let txHash: string | null = null;
-      if (executionResult && typeof executionResult === "object" && "fill" in executionResult) {
-        txHash = (executionResult as { fill: { hash?: string } }).fill.hash ?? null;
+      const intentId = (txResult as { id?: bigint }).id;
+      console.log(
+        `[rhinestone-executor] Intent submitted: id=${intentId?.toString()} type=${txResult.type}`,
+      );
+
+      if (!intentId) {
+        throw new Error("No intent ID returned from submitTransaction");
       }
 
-      await markExecuted(position.id, txHash, null);
+      const intentResult = await waitForIntentFill(
+        rhinestoneApiKey,
+        "https://v1.orchestrator.rhinestone.dev",
+        intentId,
+      );
 
-      results.push({
-        positionId: position.id,
-        user: position.smartAccountAddress,
-        amountIn: amountIn.toString(),
-        txHash,
-      });
+      console.log(
+        `[rhinestone-executor] Intent result: status=${intentResult.status} fillTxHash=${intentResult.fillTransactionHash ?? "none"}`,
+      );
+
+      const txHash = intentResult.fillTransactionHash ?? null;
+
+      if (intentResult.status === "FAILED") {
+        const errorMsg = `Intent failed (status=FAILED)`;
+        await markExecuted(position.id, null, errorMsg).catch(console.error);
+        results.push({ positionId: position.id, user: position.smartAccountAddress, amountIn: amountIn.toString(), txHash: null, error: errorMsg });
+      } else if (intentResult.status === "EXPIRED" || intentResult.status === "TIMEOUT") {
+        const errorMsg = `Intent ${intentResult.status.toLowerCase()} without fill`;
+        await markExecuted(position.id, null, errorMsg).catch(console.error);
+        results.push({ positionId: position.id, user: position.smartAccountAddress, amountIn: amountIn.toString(), txHash: null, error: errorMsg });
+      } else if (txHash) {
+        await markExecuted(position.id, txHash, null);
+        results.push({ positionId: position.id, user: position.smartAccountAddress, amountIn: amountIn.toString(), txHash });
+      } else {
+        const errorMsg = `Intent completed (status=${intentResult.status}) but no fillTxHash`;
+        await markExecuted(position.id, null, errorMsg).catch(console.error);
+        results.push({ positionId: position.id, user: position.smartAccountAddress, amountIn: amountIn.toString(), txHash: null, error: errorMsg });
+      }
     } catch (err) {
       let errorMsg = err instanceof Error ? err.message : "Unknown error";
       if (err && typeof err === "object") {

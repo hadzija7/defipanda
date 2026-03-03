@@ -1,7 +1,7 @@
 # DefiPanda System Specification
 
 **Version:** 1.0  
-**Last Updated:** 2026-02-28  
+**Last Updated:** 2026-03-02  
 **Status:** Living document — update with every architectural or behavioral change
 
 ---
@@ -110,9 +110,9 @@ DefiPanda is an automated Dollar-Cost Averaging (DCA) platform built on Chainlin
 
 | Concern | Implementation | Files |
 |---------|---------------|-------|
-| Auth UI | Reown AppKit `<appkit-button>` (Reown mode), ZeroDev social login button (ZeroDev mode), provider-status fallback (other modes) | `src/app/page.tsx`, `src/app/layout.tsx` |
-| AppKit config | Wagmi adapter, SSR cookie hydration, social login features (mounted only when `AUTH_PROVIDER=reown_appkit`) | `src/config/index.tsx`, `src/context/index.tsx`, `src/context/wallet-provider-root.tsx` |
-| Smart account | `useRhinestoneAccount` wraps AppKit signer into ERC-7579 (Reown mode); `useZeroDevSocialAccount` derives Kernel account from social validator (ZeroDev mode) | `src/hooks/useRhinestoneAccount.ts`, `src/hooks/useZeroDevSocialAccount.ts` |
+| Auth UI | Reown AppKit `<appkit-button>` (Reown mode), Privy login/logout controls (Privy mode), ZeroDev social login button (ZeroDev mode), provider-status fallback (other modes) | `src/app/page.tsx`, `src/app/layout.tsx` |
+| Runtime wallet providers | Reown AppKit provider mounts only when `AUTH_PROVIDER=reown_appkit`; Privy provider stack mounts only when `AUTH_PROVIDER=privy` | `src/context/index.tsx`, `src/context/privy-provider.tsx`, `src/context/wallet-provider-root.tsx` |
+| Smart account | `useRhinestoneAccount` wraps wagmi wallet client into ERC-7579 (Reown/Privy modes); `useZeroDevSocialAccount` derives Kernel account from social validator (ZeroDev mode) | `src/hooks/useRhinestoneAccount.ts`, `src/hooks/useZeroDevSocialAccount.ts` |
 | Portfolio view | Cross-chain balance display from Rhinestone orchestrator | `src/hooks/useRhinestoneAccount.ts`, `src/app/page.tsx` |
 | DCA form | Amount, interval, activate/pause, execution history display | `src/app/page.tsx` |
 | TypeScript declarations | `<appkit-button>` web component type | `src/global.d.ts` |
@@ -162,6 +162,7 @@ Two independent provider planes with facade pattern:
 | `zerodev_social` | No | Yes | Yes | Implemented |
 | `walletconnect` | No | Yes | Yes | Placeholder |
 | `reown_appkit` | No | Yes | Yes | Implemented (active default) |
+| `privy` | No | Yes | Yes | Implemented |
 
 **Smart Account Providers** (wallet provisioning + UserOp):
 
@@ -170,6 +171,7 @@ Two independent provider planes with facade pattern:
 | `zerodev` | Yes | Yes | Implemented |
 | `walletconnect` | No | Yes | Placeholder |
 | `reown_appkit` | No | Yes (client-side) | Implemented (active default) |
+| `privy` | No | Yes (client-side) | Implemented |
 
 **Implementation files:**
 
@@ -182,12 +184,14 @@ Two independent provider planes with facade pattern:
 | `src/lib/auth/providers/adapters/zerodev-social.ts` | ZeroDev social adapter |
 | `src/lib/auth/providers/adapters/walletconnect.ts` | WalletConnect placeholder |
 | `src/lib/auth/providers/adapters/reown-appkit.ts` | Reown AppKit adapter |
+| `src/lib/auth/providers/adapters/privy.ts` | Privy adapter |
 | `src/lib/wallet/providers/types.ts` | `ISmartAccountProviderAdapter` interface |
 | `src/lib/wallet/providers/registry.ts` | Registry + `SmartAccountFacade` |
 | `src/lib/wallet/providers/setup.ts` | Auto-registration at startup |
 | `src/lib/wallet/providers/adapters/zerodev.ts` | ZeroDev smart account adapter |
 | `src/lib/wallet/providers/adapters/walletconnect.ts` | WalletConnect placeholder |
 | `src/lib/wallet/providers/adapters/reown-appkit.ts` | Reown AppKit smart account adapter |
+| `src/lib/wallet/providers/adapters/privy.ts` | Privy smart account adapter |
 
 **Selection:** `AUTH_PROVIDER` and `SMART_ACCOUNT_PROVIDER` env vars. Current active: `reown_appkit` for both.
 
@@ -226,7 +230,7 @@ Two independent provider planes with facade pattern:
 | `dca_positions` | (`smart_account_address`, `smart_account_provider`) UNIQUE | DCA strategy per smart account stack |
 
 Provider-scoping update:
-- `dca_positions` now includes `smart_account_provider` (`reown_appkit` or `zerodev`)
+- `dca_positions` now includes `smart_account_provider` (`reown_appkit`, `privy`, or `zerodev`)
 - Unique key is `(smart_account_address, smart_account_provider)` so strategies do not collide across account stacks
 - `/api/dca/execute` only executes due positions matching the active execution provider
 - `dca_positions` includes `zerodev_permission_account` for serialized ZeroDev permission/session-key payloads
@@ -354,6 +358,9 @@ See section 3.1.5 for table details.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_REOWN_PROJECT_ID` | Reown mode only | Reown/WalletConnect Cloud project ID (`AUTH_PROVIDER=reown_appkit`) |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | Privy mode only | Privy App ID (`AUTH_PROVIDER=privy`) |
+| `NEXT_PUBLIC_PRIVY_CHAIN_ID` | No | Optional chain override for Privy mode |
+| `NEXT_PUBLIC_PRIVY_RPC_URL` | No | Optional RPC URL override for Privy wagmi transport |
 | `RHINESTONE_API_KEY` | Yes | Rhinestone orchestrator API key (server-side only) |
 | `SMART_ACCOUNT_OWNER_PRIVATE_KEY` | Yes | Backend signer private key for session key DCA execution |
 | `CRE_BACKEND_AUTH_TOKEN` | Yes | Token CRE uses to authenticate with backend |
@@ -383,7 +390,7 @@ See section 3.1.5 for table details.
 
 ### 5.1 Authentication
 
-- **Primary path:** Reown AppKit social login (non-custodial embedded wallets, client-side)
+- **Primary paths:** Reown AppKit or Privy social login (non-custodial embedded wallets, client-side)
 - **Legacy path:** Google OIDC Authorization Code + PKCE (server-side token exchange)
 - **Session cookies:** HTTP-only, same-site lax, HMAC-signed with constant-time verification
 - **Open redirect prevention:** `returnTo` sanitized to same-origin relative paths (blocks protocol-relative, absolute, and control-character normalization attacks)

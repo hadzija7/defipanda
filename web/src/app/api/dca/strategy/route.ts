@@ -95,12 +95,13 @@ export async function POST(request: NextRequest) {
       smartAccountProvider ?? getDefaultSmartAccountProvider()
     ).toLowerCase();
 
-    const requiresSessionGrant = normalizedProvider === "reown_appkit";
+    const requiresSessionGrant =
+      normalizedProvider === "reown_appkit" || normalizedProvider === "privy";
     if (active && requiresSessionGrant && !sessionEnableSignature) {
       return NextResponse.json(
         {
           error:
-            "sessionEnableSignature is required when activating DCA for reown_appkit",
+            "sessionEnableSignature is required when activating DCA for reown_appkit/privy",
         },
         { status: 400 },
       );

@@ -35,6 +35,9 @@ export {
   ReownAppKitAuthAdapter,
   reownAppKitAuthAdapter,
   type ReownAppKitAuthConfig,
+  PrivyAuthAdapter,
+  privyAuthAdapter,
+  type PrivyAuthConfig,
 } from "./adapters";
 
 export { initializeAuthProviders } from "./setup";

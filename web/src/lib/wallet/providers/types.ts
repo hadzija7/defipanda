@@ -10,7 +10,8 @@ import type { Address, Hex, Abi } from "viem";
 export type SmartAccountProviderId =
   | "zerodev"
   | "walletconnect"
-  | "reown_appkit";
+  | "reown_appkit"
+  | "privy";
 
 export type SmartAccountProviderCapabilities = {
   /** Provider supports server-side provisioning */

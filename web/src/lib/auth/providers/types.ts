@@ -9,7 +9,8 @@ export type AuthProviderId =
   | "google_oidc"
   | "zerodev_social"
   | "walletconnect"
-  | "reown_appkit";
+  | "reown_appkit"
+  | "privy";
 
 export type AuthProviderCapabilities = {
   /** Provider can issue server-side sessions */

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { useAccount, useSwitchChain } from "wagmi";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useSetActiveWallet } from "@privy-io/wagmi";
 import {
   useSmartAccount,
   type TokenBalance,
@@ -10,6 +12,7 @@ import {
 } from "@/hooks/useSmartAccount";
 import { useZeroDevSocialAccount } from "@/hooks/useZeroDevSocialAccount";
 import { buildDcaSession } from "@/lib/wallet/rhinestone-sessions";
+import { experimental_enableSession } from "@rhinestone/sdk/actions/smart-sessions";
 import type { Address, Hex } from "viem";
 import { activeNetwork } from "@/lib/constants/networks";
 import { useWalletRuntime } from "@/context/wallet-provider-root";
@@ -277,7 +280,10 @@ function DcaStrategyForm({
       let zerodevPermissionAccount: string | undefined;
 
       if (active) {
-        if (smartAccountProvider === "reown_appkit") {
+        if (
+          smartAccountProvider === "reown_appkit" ||
+          smartAccountProvider === "privy"
+        ) {
           if (walletChainId !== activeNetwork.chainId) {
             try {
               await switchChainAsync({ chainId: activeNetwork.chainId });
@@ -306,6 +312,22 @@ function DcaStrategyForm({
             await rhinestoneAccount.experimental_getSessionDetails([session]);
           const enableSig: Hex =
             await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
+
+          // Deploy account + enable session on-chain in a single transaction.
+          // If the account is counterfactual, sendTransaction handles deployment.
+          const txResult = await rhinestoneAccount.sendTransaction({
+            chain: activeNetwork.chain,
+            calls: [
+              experimental_enableSession(
+                session,
+                enableSig,
+                sessionDetails.hashesAndChainIds,
+                0,
+              ),
+            ],
+            sponsored: true,
+          });
+          await rhinestoneAccount.waitForExecution(txResult);
 
           sessionEnableSignature = enableSig;
           sessionHashesAndChainIds = JSON.stringify(
@@ -737,6 +759,198 @@ function ReownHome() {
   );
 }
 
+function PrivyHome() {
+  const { authProvider } = useWalletRuntime();
+  const { ready, authenticated, login, logout } = usePrivy();
+  const { wallets } = useWallets();
+  const { setActiveWallet } = useSetActiveWallet();
+  const wagmiAccount = useAccount();
+  const {
+    rhinestoneAccount,
+    accountAddress: rhinestoneAddress,
+    portfolio: rhinestonePortfolio,
+    onChainBalances,
+    isLoading: rhinestoneLoading,
+    error: rhinestoneError,
+    refreshPortfolio,
+  } = useSmartAccount();
+
+  const isConnected = ready && authenticated && !!wagmiAccount.address;
+
+  const [position, setPosition] = useState<DcaPosition | null>(null);
+  const [positionLoading, setPositionLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authenticated || wallets.length === 0) {
+      return;
+    }
+
+    // Prefer Privy's embedded wallet over injected connectors (e.g. MetaMask),
+    // otherwise wagmi can bind to chain 1 and trigger unsupported switch errors.
+    const preferredWallet =
+      wallets.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (wallet: any) =>
+          wallet?.walletClientType === "privy" ||
+          wallet?.walletType === "embedded" ||
+          wallet?.connectorType === "embedded",
+      ) ?? wallets[0];
+
+    (async () => {
+      try {
+        await setActiveWallet(preferredWallet);
+        // Privy's embedded wallet boots on mainnet; move it to the app's chain.
+        if (
+          typeof preferredWallet.switchChain === "function" &&
+          preferredWallet.chainId !== `eip155:${activeNetwork.chainId}`
+        ) {
+          await preferredWallet.switchChain(activeNetwork.chainId);
+        }
+      } catch {
+        // switchChain may fail if already on the correct chain — safe to ignore
+      }
+    })();
+  }, [authenticated, setActiveWallet, wallets]);
+
+  const loadPosition = useCallback(async () => {
+    if (!rhinestoneAddress) return;
+    setPositionLoading(true);
+    try {
+      const res = await fetch(
+        `/api/dca/strategy?address=${rhinestoneAddress}&provider=${authProvider}`,
+      );
+      const body = await res.json();
+      setPosition(body.strategy ?? null);
+    } catch {
+      // ignore
+    } finally {
+      setPositionLoading(false);
+    }
+  }, [authProvider, rhinestoneAddress]);
+
+  useEffect(() => {
+    if (rhinestoneAddress) {
+      void loadPosition();
+    }
+  }, [rhinestoneAddress, loadPosition]);
+
+  return (
+    <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      <div className="mx-auto w-full max-w-lg">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Automated DCA on Chainlink CRE
+            </p>
+          </div>
+          {isConnected ? (
+            <button
+              onClick={() => void logout()}
+              type="button"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Logout
+            </button>
+          ) : (
+            <button
+              onClick={() => login()}
+              type="button"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Login with Privy
+            </button>
+          )}
+        </div>
+
+        {!isConnected && (
+          <Card className="text-center">
+            <div className="flex flex-col items-center gap-3 py-8">
+              <h2 className="text-lg font-semibold">Connect your wallet</h2>
+              <p className="max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+                Sign in with Privy to initialize your smart account and manage
+                automated DCA.
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {isConnected && (
+          <div className="flex flex-col gap-4">
+            <Card>
+              <SectionTitle>Smart Account</SectionTitle>
+              {rhinestoneLoading ? (
+                <div className="flex items-center gap-2">
+                  <StatusDot color="amber" />
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Initializing Rhinestone account...
+                  </span>
+                </div>
+              ) : rhinestoneError ? (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                  {rhinestoneError}
+                </div>
+              ) : rhinestoneAddress ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <StatusDot color="green" />
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Privy signer + Rhinestone ERC-7579
+                    </span>
+                  </div>
+                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                    {rhinestoneAddress}
+                  </code>
+                </div>
+              ) : null}
+            </Card>
+
+            {rhinestoneAddress && (
+              <Card>
+                <SectionTitle>Balances</SectionTitle>
+                <OnChainBalancesView balances={onChainBalances} onRefresh={refreshPortfolio} />
+              </Card>
+            )}
+
+            {rhinestoneAddress && rhinestonePortfolio.length > 0 && (
+              <Card>
+                <SectionTitle>Cross-Chain Portfolio</SectionTitle>
+                <PortfolioView portfolio={rhinestonePortfolio} onRefresh={refreshPortfolio} />
+              </Card>
+            )}
+
+            {rhinestoneAddress && wagmiAccount.address && (
+              <Card>
+                <SectionTitle>DCA Strategy</SectionTitle>
+                {positionLoading ? (
+                  <div className="flex items-center gap-2 py-4">
+                    <StatusDot color="amber" />
+                    <span className="text-xs text-zinc-500">Loading strategy...</span>
+                  </div>
+                ) : (
+                  <DcaStrategyForm
+                    smartAccountAddress={rhinestoneAddress}
+                    smartAccountProvider={authProvider}
+                    ownerAddress={wagmiAccount.address}
+                    existingPosition={position}
+                    onSaved={(p) => setPosition(p)}
+                    usdcBalance={onChainBalances?.usdc ?? null}
+                    rhinestoneAccount={rhinestoneAccount}
+                  />
+                )}
+              </Card>
+            )}
+          </div>
+        )}
+
+        <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+          {activeNetwork.name} testnet only. No real funds.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ZeroDevHome() {
   const {
     accountAddress,
@@ -909,10 +1123,14 @@ function ProviderNotEnabledView({ provider }: { provider: string }) {
 }
 
 export default function Home() {
-  const { isReown, authProvider } = useWalletRuntime();
+  const { isReown, isPrivy, authProvider } = useWalletRuntime();
 
   if (authProvider === "zerodev_social") {
     return <ZeroDevHome />;
+  }
+
+  if (isPrivy) {
+    return <PrivyHome />;
   }
 
   if (!isReown) {

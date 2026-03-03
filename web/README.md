@@ -47,6 +47,9 @@ Optional:
 - `ZERODEV_RPC_URL` (server-side ZeroDev bundler/executor RPC; set equal to `NEXT_PUBLIC_ZERODEV_RPC_URL` unless you intentionally split endpoints)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required when `AUTH_PROVIDER=walletconnect`)
 - `NEXT_PUBLIC_WALLETCONNECT_CHAIN_ID` (chain ID for WalletConnect, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_PRIVY_APP_ID` (required when `AUTH_PROVIDER=privy`)
+- `NEXT_PUBLIC_PRIVY_CHAIN_ID` (optional chain ID override for Privy mode; defaults to active network chain)
+- `NEXT_PUBLIC_PRIVY_RPC_URL` (optional RPC override for Privy mode)
 - `RHINESTONE_API_KEY` (server-side only; required for Rhinestone smart account + session keys)
 
 ### Auth Endpoints

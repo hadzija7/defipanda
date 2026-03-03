@@ -39,7 +39,7 @@ export function getSmartAccountProviderIds(): SmartAccountProviderId[] {
 const DEFAULT_SMART_ACCOUNT_PROVIDER: SmartAccountProviderId = "zerodev";
 
 function normalizeProviderId(raw: string | undefined): SmartAccountProviderId {
-  if (raw === "walletconnect" || raw === "reown_appkit") {
+  if (raw === "walletconnect" || raw === "reown_appkit" || raw === "privy") {
     return raw;
   }
   return DEFAULT_SMART_ACCOUNT_PROVIDER;

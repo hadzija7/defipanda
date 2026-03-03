@@ -10,6 +10,7 @@ import { googleOidcAdapter } from "./adapters/google-oidc";
 import { zerodevSocialAdapter } from "./adapters/zerodev-social";
 import { walletconnectAuthAdapter } from "./adapters/walletconnect";
 import { reownAppKitAuthAdapter } from "./adapters/reown-appkit";
+import { privyAuthAdapter } from "./adapters/privy";
 
 let initialized = false;
 
@@ -22,6 +23,7 @@ export function initializeAuthProviders(): void {
   registerAuthProvider(zerodevSocialAdapter);
   registerAuthProvider(walletconnectAuthAdapter);
   registerAuthProvider(reownAppKitAuthAdapter);
+  registerAuthProvider(privyAuthAdapter);
 
   initialized = true;
 }

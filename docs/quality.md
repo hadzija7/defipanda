@@ -1,19 +1,19 @@
 # Quality Scorecard
 
-Last Updated: 2026-03-02
+Last Updated: 2026-03-03
 
 ## Domain Status
 | Domain | Spec | Code | Tests | Review | Overall |
 |---|---|---|---|---|---|
 | Web App | C | C | F | F | C |
 | CRE Workflows | C | C | F | F | C |
-| DCA Execution | C | C | F | F | C |
+| DCA Execution | C | B- | F | F | C+ |
 | Monitoring | F | F | F | F | F |
 
 ## Cross-Cutting Layers
 | Layer | Grade | Notes |
 |---|---|---|
-| Security | B- | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering; modular provider architecture with typed adapter contracts; unified wallet auth capability for ZeroDev Social, WalletConnect, and Reown AppKit (client-side wallet management); AppKit creates non-custodial embedded wallets with social login; Rhinestone API key proxied server-side via `/api/orchestrator` (never exposed to browser); session keys use spending-limit policies for scoped DCA automation; `/api/dca/execute` now requires bearer token authentication; CRE→backend requests use constant-time token comparison; Smart Sessions: user signs `experimental_signEnableSession` once, enable signature stored in DB, backend passes `enableData` for every execution (Rhinestone "enable mode") |
+| Security | B- | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering; modular provider architecture with typed adapter contracts; unified wallet auth capability for ZeroDev Social, WalletConnect, Reown AppKit, and Privy (client-side wallet management); AppKit and Privy create non-custodial embedded wallets with social login; Rhinestone API key proxied server-side via `/api/orchestrator` (never exposed to browser); session keys use spending-limit policies for scoped DCA automation; `/api/dca/execute` now requires bearer token authentication; CRE→backend requests use constant-time token comparison; Smart Sessions: user signs `experimental_signEnableSession` once, enable signature stored in DB, backend passes `enableData` for every execution (Rhinestone "enable mode") |
 | Observability | F | Monitoring architecture not finalized; auth UI now emits provider-specific ZeroDev login error details to browser console for faster triage |
 | Performance | F | No baseline measurements yet |
 | CI/CD | F | Pipeline not documented yet |
@@ -40,3 +40,7 @@ Last Updated: 2026-03-02
 - Execute endpoint no longer calls `markExecuted()` for session-not-granted positions — they retry on every CRE trigger until the user grants the session.
 - DCA execution is now modular (`rhinestone` vs `zerodev`) but provider-specific test coverage is missing.
 - ZeroDev social automation now uses permissions/session-key serialization, but end-to-end reliability tests are still missing across redeploy/migration scenarios.
+- **DCA execution verified on-chain** (2026-03-03): USDC→WETH swap via Rhinestone orchestrator intent system with session key authorization. Key findings:
+  - `sponsored: true` is mandatory for session-key intents (non-sponsored routing goes through Permit2/Paymaster, violating session permissions)
+  - SDK `waitForExecution` returns prematurely at PRECONFIRMED status; custom `waitForIntentFill` polls until COMPLETED/FILLED
+  - Frontend deploy+session-enable is atomic via `sendTransaction` with `experimental_enableSession()`

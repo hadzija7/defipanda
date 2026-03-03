@@ -134,6 +134,15 @@
   - Backend: passes `enableData` (user signature + hashes) in every `prepareTransaction` call
   - Session definition is deterministic: frontend uses address, backend uses private key, same hash
   - `NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS` env var exposes backend signer address to frontend
+- [x] Fix account deployment + session enable (atomic):
+  - Root cause: Rhinestone smart account was counterfactual only (not deployed on-chain)
+  - Frontend DCA activation now uses `rhinestoneAccount.sendTransaction({ sponsored: true })` with `experimental_enableSession()` to atomically deploy the account and install the session on-chain
+  - Separate `deployAccount()` / `isAccountDeployed()` functions removed; orchestrator handles deployment as part of the first sponsored intent
+- [x] Fix DCA backend execution (session-key swap via orchestrator):
+  - Root cause: SDK `waitForExecution` returns at PRECONFIRMED status before the filler finishes; our code treated the early return as a completed (empty) fill
+  - Fix: custom `waitForIntentFill` polls `getIntentOpStatus` until COMPLETED/FILLED/FAILED/EXPIRED (up to 120s), extracting `fillTransactionHash`
+  - `sponsored: true` is required for session-key intents; without it, the non-sponsored routing uses Permit2/Paymaster calls that don't match session permissions, and the filler never executes
+  - Verified on-chain: Uniswap V3 swap (USDC→WETH) executed successfully through Rhinestone orchestrator with session key authorization
 - [x] Add contract address constants (network-switchable `web/src/lib/constants/networks.ts`):
   - Ethereum Sepolia active: USDC, WETH, Uniswap V3 SwapRouter02, Chainlink ETH/USD price feed
   - Base Sepolia config retained for easy switching
@@ -150,6 +159,9 @@
   - Execute endpoint no longer marks session-not-granted positions as executed (retries on next trigger)
   - Non-Reown auth modes now show a provider status screen instead of crashing on missing Reown env
   - `zerodev_social` mode now supports client-side social login + Kernel address derivation + on-chain balance view
+  - `privy` mode now supports client-side login/logout, wagmi wallet client wiring, Rhinestone account initialization, and provider-scoped DCA strategy UX
+  - Privy mode now prefers the embedded Privy wallet as active wagmi wallet (avoids accidental injected wallet chain-1 binding)
+  - Privy chain-id resolution no longer inherits `SMART_ACCOUNT_CHAIN_ID`; it now uses `NEXT_PUBLIC_PRIVY_CHAIN_ID` or `activeNetwork.chainId` to avoid unsupported `wallet_switchEthereumChain` requests
   - ZeroDev login callback URL normalized to `${origin}/`; client transport now prefers `NEXT_PUBLIC_ZERODEV_RPC_URL`
 - [x] Create DCA strategy API (DB-backed):
   - `GET /api/dca/strategy?address=0x...` — load position for a smart account
@@ -159,6 +171,7 @@
   - `markExecuted()` updates last_executed_at, tx hash, error, and total_executions
   - DCA positions now include `smart_account_provider` to isolate strategies by account stack
   - DCA strategy now persists `zerodev_permission_account` payload for ZeroDev session-key execution
+  - Session-grant requirement now applies to both `reown_appkit` and `privy` provider scopes
 - [ ] Simulate end-to-end: `cre workflow simulate dca-workflow --target staging-settings`
 - [x] Update docs: architecture, CRE workflows spec, quality scorecard, TODO
 

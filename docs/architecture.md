@@ -81,12 +81,17 @@ Reown AppKit provides a unified client-side solution for social login + embedded
 - `unifiedWalletAuth: true`: auth and wallet creation happen in a single client-side flow
 
 ### Provider Selection
-- `AUTH_PROVIDER` env var selects auth provider (`google_oidc` default, `zerodev_social`, `walletconnect`, `reown_appkit`)
-- `SMART_ACCOUNT_PROVIDER` env var selects smart account provider (`zerodev` default, `walletconnect`, `reown_appkit`)
+- `AUTH_PROVIDER` env var selects auth provider (`google_oidc` default, `zerodev_social`, `walletconnect`, `reown_appkit`, `privy`)
+- `SMART_ACCOUNT_PROVIDER` env var selects smart account provider (`zerodev` default, `walletconnect`, `reown_appkit`, `privy`)
 - Adapters are registered at startup and resolved through facade APIs
 - `WalletProviderRoot` in app layout mounts Reown AppKit/Wagmi only when `AUTH_PROVIDER=reown_appkit`
+- `WalletProviderRoot` mounts Privy (`PrivyProvider` + Privy Wagmi + React Query) only when `AUTH_PROVIDER=privy`
 - Non-Reown modes render a safe provider-status UI for the DCA page instead of hard failing on missing Reown env vars
 - `zerodev_social` mode now initializes client-side social auth via `@zerodev/social-validator` and derives a Kernel account address for read-only wallet UX (balances + address)
+- Privy mode reuses the Rhinestone client/session flow and does not affect existing Reown/ZeroDev modes unless selected
+- Privy mode env contract: `NEXT_PUBLIC_PRIVY_APP_ID` (required), `NEXT_PUBLIC_PRIVY_CHAIN_ID` (optional), `NEXT_PUBLIC_PRIVY_RPC_URL` (optional)
+- Privy client-side chain resolution is isolated from `SMART_ACCOUNT_CHAIN_ID`; it uses `NEXT_PUBLIC_PRIVY_CHAIN_ID` or falls back to `activeNetwork.chainId` to prevent accidental mainnet (`1`) chain-switch requests
+- Privy runtime now prefers embedded Privy wallets as the active wagmi wallet to avoid binding to injected wallets that may be on chain 1
 
 ### Extension Points
 - New providers implement `IAuthProviderAdapter` or `ISmartAccountProviderAdapter`
@@ -136,20 +141,33 @@ Rhinestone session key custody:
 - After execution, `markExecuted()` updates `last_executed_at`, `total_executions`, and tx hash/error
 - One position per smart account (unique index on `smart_account_address`)
 
+### Smart Account Deployment + Session Enable (Atomic)
+- Rhinestone smart accounts are counterfactual: address is deterministic but contract is not deployed until the first sponsored intent
+- Frontend DCA activation uses `rhinestoneAccount.sendTransaction({ sponsored: true })` with `experimental_enableSession()` to atomically deploy the account and install the session on-chain
+- Backend pre-checks `getCode()` and skips undeployed accounts with a clear re-activation message
+
 ### Session Key Authorization (Smart Sessions)
 - User grants a scoped DCA session on first activation via `experimental_signEnableSession`
 - Session definition: `approve(USDC)` + `exactInputSingle(SwapRouter02)` with spending-limit policy
 - Enable signature + session hashes stored in `dca_positions` table
-- Backend passes `enableData` (user signature + hashes) in every `prepareTransaction` call
 - Session is deterministic: frontend builds with backend signer address, backend builds with private key — both produce identical session hashes
-- Uses Rhinestone "enable mode": session is enabled + used atomically on first execution
+- Session is installed on-chain during the atomic deploy+enable intent; backend uses `experimental_session` signer type
+
+### DCA Execution via Rhinestone Orchestrator (Intent System)
+- Backend submits session-key intents via `prepareTransaction` → `signTransaction` → `submitTransaction` with `sponsored: true`
+- The orchestrator's filler executes the approve+swap calls on-chain via `executeSinglechainOps`
+- `sponsored: true` is required for session-key intents; without it the orchestrator routes through Permit2/Paymaster which violate session permissions
+- SDK `waitForExecution` returns early at PRECONFIRMED status; backend uses custom `waitForIntentFill` that polls until COMPLETED/FILLED (up to 120s)
+- Intent lifecycle: PENDING → PRECONFIRMED (filler claims) → COMPLETED (`fillTransactionHash` available)
 
 ### Modular Execution Engine Switching
 - `/api/dca/execute` delegates to provider-specific executors selected by env:
   - `DCA_EXECUTION_PROVIDER=rhinestone` (default when `SMART_ACCOUNT_PROVIDER=reown_appkit`)
+  - `DCA_EXECUTION_PROVIDER=rhinestone` (default when `SMART_ACCOUNT_PROVIDER=privy`)
   - `DCA_EXECUTION_PROVIDER=zerodev` (default when `SMART_ACCOUNT_PROVIDER=zerodev`)
 - Executors are implemented as separate modules under `web/src/lib/dca/executors/`
 - Due-position selection is provider-scoped via `dca_positions.smart_account_provider`
+- Rhinestone executor processes provider scopes `reown_appkit` and `privy`
 - Strategy records are isolated per provider using unique key `(smart_account_address, smart_account_provider)`
 - ZeroDev social flow generates/stores serialized permission accounts (`zerodev_permission_account`) and backend execution deserializes them with backend session signer for automated swaps
 
