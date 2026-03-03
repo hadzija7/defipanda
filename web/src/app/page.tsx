@@ -13,7 +13,14 @@ import {
 import { useZeroDevSocialAccount } from "@/hooks/useZeroDevSocialAccount";
 import { buildDcaSession } from "@/lib/wallet/rhinestone-sessions";
 import { experimental_enableSession } from "@rhinestone/sdk/actions/smart-sessions";
-import type { Address, Hex } from "viem";
+import {
+  encodeFunctionData,
+  erc20Abi,
+  parseUnits,
+  isAddress,
+  type Address,
+  type Hex,
+} from "viem";
 import { activeNetwork } from "@/lib/constants/networks";
 import { useWalletRuntime } from "@/context/wallet-provider-root";
 
@@ -119,15 +126,286 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// Withdraw modal
+// ---------------------------------------------------------------------------
+
+type WithdrawAsset = "USDC" | "WETH";
+
+function WithdrawModal({
+  onClose,
+  onSuccess,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rhinestoneAccount: rhinestoneAcct,
+  onChainBalances,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rhinestoneAccount: any;
+  onChainBalances: OnChainBalances | null;
+}) {
+  const [asset, setAsset] = useState<WithdrawAsset>("USDC");
+  const [amount, setAmount] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ amount: string; asset: string; txHash: string | null } | null>(null);
+
+  const maxBalance =
+    asset === "USDC"
+      ? onChainBalances?.usdc ?? "0"
+      : onChainBalances?.weth ?? "0";
+  const decimals =
+    asset === "USDC" ? activeNetwork.usdcDecimals : activeNetwork.wethDecimals;
+  const tokenAddress = asset === "USDC" ? activeNetwork.usdc : activeNetwork.weth;
+
+  function handleMax() {
+    setAmount(maxBalance);
+  }
+
+  async function handleWithdraw() {
+    setError(null);
+
+    if (!amount || parseFloat(amount) <= 0) {
+      setError("Enter an amount greater than 0");
+      return;
+    }
+    if (parseFloat(amount) > parseFloat(maxBalance)) {
+      setError(`Insufficient ${asset} balance`);
+      return;
+    }
+    if (!recipient || !isAddress(recipient)) {
+      setError("Enter a valid wallet address");
+      return;
+    }
+    if (!rhinestoneAcct) {
+      setError("Smart account not ready");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const parsedAmount = parseUnits(amount, decimals);
+      const transferData = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [recipient as Address, parsedAmount],
+      });
+
+      const txResult = await rhinestoneAcct.sendTransaction({
+        chain: activeNetwork.chain,
+        calls: [{ to: tokenAddress, value: BigInt(0), data: transferData }],
+        sponsored: true,
+      });
+      const executionResult = await rhinestoneAcct.waitForExecution(txResult);
+
+      console.log("[withdraw] txResult:", JSON.stringify(txResult, (_k, v) => typeof v === "bigint" ? v.toString() : v));
+      console.log("[withdraw] executionResult:", JSON.stringify(executionResult, (_k, v) => typeof v === "bigint" ? v.toString() : v));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function findTxHash(obj: any): string | null {
+        if (!obj) return null;
+        if (typeof obj === "string" && obj.startsWith("0x") && obj.length === 66) return obj;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const found = findTxHash(item);
+            if (found) return found;
+          }
+          return null;
+        }
+        if (typeof obj === "object") {
+          for (const key of ["transactionHash", "hash", "txHash", "fillTransactionHash"]) {
+            const val = obj[key];
+            if (typeof val === "string" && val.startsWith("0x") && val.length === 66) return val;
+          }
+          if (obj.receipt) {
+            const found = findTxHash(obj.receipt);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+      const hash = findTxHash(executionResult) ?? findTxHash(txResult);
+
+      onSuccess();
+      setSuccessInfo({ amount, asset, txHash: hash });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Transaction failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const etherscanBase = activeNetwork.chainId === 11155111
+    ? "https://sepolia.etherscan.io"
+    : "https://etherscan.io";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            {successInfo ? "Withdrawal Complete" : "Withdraw Funds"}
+          </h3>
+          <button
+            onClick={onClose}
+            type="button"
+            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {successInfo ? (
+          <div className="flex flex-col gap-4">
+            <div className="rounded-lg bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {successInfo.amount} {successInfo.asset} withdrawn successfully
+              </div>
+            </div>
+
+            {successInfo.txHash && (
+              <a
+                href={`${etherscanBase}/tx/${successInfo.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-blue-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-blue-400 dark:hover:bg-zinc-800"
+              >
+                View on Etherscan
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            )}
+
+            <button
+              onClick={onClose}
+              type="button"
+              className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Asset selector */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Asset
+              </label>
+              <div className="flex gap-2">
+                {(["USDC", "WETH"] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => {
+                      setAsset(a);
+                      setAmount("");
+                      setError(null);
+                    }}
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      asset === a
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                Available: {parseFloat(maxBalance).toFixed(asset === "USDC" ? 2 : 6)} {asset}
+              </span>
+            </div>
+
+            {/* Amount input */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Amount
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="0.00"
+                  className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+                  disabled={sending}
+                />
+                <button
+                  onClick={handleMax}
+                  type="button"
+                  className="rounded-lg border border-zinc-300 px-3 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  MAX
+                </button>
+              </div>
+            </div>
+
+            {/* Recipient */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Receiver wallet
+              </label>
+              <input
+                type="text"
+                value={recipient}
+                onChange={(e) => {
+                  setRecipient(e.target.value);
+                  setError(null);
+                }}
+                placeholder="0x..."
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+                disabled={sending}
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleWithdraw}
+              disabled={sending || !amount || !recipient}
+              type="button"
+              className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              {sending ? "Sending..." : `Withdraw ${asset}`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Portfolio display
 // ---------------------------------------------------------------------------
 
 function OnChainBalancesView({
   balances,
   onRefresh,
+  onWithdraw,
 }: {
   balances: OnChainBalances | null;
   onRefresh: () => void;
+  onWithdraw?: () => void;
 }) {
   if (!balances) {
     return (
@@ -147,13 +425,24 @@ function OnChainBalancesView({
         <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
           {balances.chainName} balances
         </span>
-        <button
-          onClick={onRefresh}
-          type="button"
-          className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-1">
+          {onWithdraw && (usdcNum > 0 || wethNum > 0) && (
+            <button
+              onClick={onWithdraw}
+              type="button"
+              className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              Withdraw
+            </button>
+          )}
+          <button
+            onClick={onRefresh}
+            type="button"
+            className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
@@ -181,6 +470,7 @@ function OnChainBalancesView({
           No USDC balance. Deposit USDC to start DCA executions.
         </div>
       )}
+
     </div>
   );
 }
@@ -591,6 +881,7 @@ function ReownHome() {
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const loadPosition = useCallback(async () => {
     if (!rhinestoneAddress) return;
@@ -690,8 +981,21 @@ function ReownHome() {
             {rhinestoneAddress && (
               <Card>
                 <SectionTitle>Balances</SectionTitle>
-                <OnChainBalancesView balances={onChainBalances} onRefresh={refreshPortfolio} />
+                <OnChainBalancesView
+                  balances={onChainBalances}
+                  onRefresh={refreshPortfolio}
+                  onWithdraw={() => setShowWithdraw(true)}
+                />
               </Card>
+            )}
+
+            {showWithdraw && rhinestoneAccount && (
+              <WithdrawModal
+                rhinestoneAccount={rhinestoneAccount}
+                onChainBalances={onChainBalances}
+                onClose={() => setShowWithdraw(false)}
+                onSuccess={refreshPortfolio}
+              />
             )}
 
             {/* Cross-chain portfolio (Rhinestone aggregated) */}
@@ -779,6 +1083,7 @@ function PrivyHome() {
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
     if (!authenticated || wallets.length === 0) {
@@ -908,8 +1213,21 @@ function PrivyHome() {
             {rhinestoneAddress && (
               <Card>
                 <SectionTitle>Balances</SectionTitle>
-                <OnChainBalancesView balances={onChainBalances} onRefresh={refreshPortfolio} />
+                <OnChainBalancesView
+                  balances={onChainBalances}
+                  onRefresh={refreshPortfolio}
+                  onWithdraw={() => setShowWithdraw(true)}
+                />
               </Card>
+            )}
+
+            {showWithdraw && rhinestoneAccount && (
+              <WithdrawModal
+                rhinestoneAccount={rhinestoneAccount}
+                onChainBalances={onChainBalances}
+                onClose={() => setShowWithdraw(false)}
+                onSuccess={refreshPortfolio}
+              />
             )}
 
             {rhinestoneAddress && rhinestonePortfolio.length > 0 && (
