@@ -1,123 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RhinestoneSDK } from "@rhinestone/sdk";
-import { encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
-import { buildBackendDcaSession } from "@/lib/wallet/rhinestone-sessions";
+import { executeDueDcaPositions } from "@/lib/dca/executors";
+import type { CREExecutionRequest } from "@/lib/dca/executors/types";
+import { resolveDcaExecutionProvider } from "@/lib/dca/execution-provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getRequiredEnv(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+function validateBearerToken(request: NextRequest): boolean {
+  const expectedToken = process.env.CRE_BACKEND_AUTH_TOKEN;
+  if (!expectedToken) return false;
+
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  const token = authHeader.slice(7);
+  if (token.length !== expectedToken.length) return false;
+
+  let mismatch = 0;
+  for (let i = 0; i < token.length; i++) {
+    mismatch |= token.charCodeAt(i) ^ expectedToken.charCodeAt(i);
   }
-  return value;
+  return mismatch === 0;
 }
 
+// ---------------------------------------------------------------------------
+// POST /api/dca/execute
+// ---------------------------------------------------------------------------
+
 /**
- * POST /api/dca/execute
+ * Called by CRE workflow with consensus-verified market data.
+ * Reads all due DCA positions from the database (active + interval elapsed),
+ * executes USDC->WETH swaps on user smart accounts via Rhinestone session keys.
  *
- * Backend DCA execution endpoint. Uses a Rhinestone session key to submit
- * a swap/transfer transaction on behalf of the user's smart account.
- *
- * Expected JSON body:
- * {
- *   "smartAccountAddress": "0x...",  // The user's Rhinestone smart account
- *   "tokenAddress": "0x...",         // ERC-20 token to transfer (e.g. USDC)
- *   "recipientAddress": "0x...",     // Destination for the DCA output
- *   "amount": "1000000",            // Amount in smallest unit (e.g. 1 USDC = 1000000)
- *   "chainId": 84532                // Target chain ID (default: Base Sepolia)
- * }
- *
- * This endpoint is designed to be called by Chainlink CRE or a cron scheduler.
+ * The backend signer is NOT the account owner — it holds a scoped session key
+ * that the user pre-authorized. Transactions are submitted as orchestrator
+ * intents using the prepare → sign → submit flow.
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      smartAccountAddress,
-      tokenAddress,
-      recipientAddress,
-      amount,
-    } = body as {
-      smartAccountAddress: Address;
-      tokenAddress: Address;
-      recipientAddress: Address;
-      amount: string;
-      chainId?: number;
-    };
+    if (!validateBearerToken(request)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!smartAccountAddress || !tokenAddress || !recipientAddress || !amount) {
+    const body = (await request.json()) as CREExecutionRequest;
+    const { consensusPrice } = body;
+
+    if (!consensusPrice) {
       return NextResponse.json(
-        { error: "Missing required fields: smartAccountAddress, tokenAddress, recipientAddress, amount" },
+        { error: "Missing required field: consensusPrice" },
         { status: 400 },
       );
     }
 
-    const backendPrivateKey = getRequiredEnv("SMART_ACCOUNT_OWNER_PRIVATE_KEY") as Hex;
-    const rhinestoneApiKey = getRequiredEnv("RHINESTONE_API_KEY");
-
-    const backendSignerAccount = privateKeyToAccount(backendPrivateKey);
-
-    const rhinestone = new RhinestoneSDK({
-      apiKey: rhinestoneApiKey,
-      endpointUrl: "https://v1.orchestrator.rhinestone.dev",
-    });
-
-    const rhinestoneAccount = await rhinestone.createAccount({
-      owners: {
-        type: "ecdsa" as const,
-        accounts: [backendSignerAccount],
-      },
-    });
-
-    const { session } = buildBackendDcaSession({
-      backendSignerPrivateKey: backendPrivateKey,
-      tokenAddress,
-    });
-
-    const chain = baseSepolia;
-
-    const transferCalldata = encodeFunctionData({
-      abi: erc20Abi,
-      functionName: "transfer",
-      args: [recipientAddress, BigInt(amount)],
-    });
-
-    const transaction = await rhinestoneAccount.sendTransaction({
-      chain,
-      calls: [
-        {
-          to: tokenAddress,
-          value: BigInt(0),
-          data: transferCalldata,
-        },
-      ],
-      signers: {
-        type: "experimental_session" as const,
-        session,
-      },
-    });
-
-    const result = await rhinestoneAccount.waitForExecution(transaction);
-
-    let transactionHash: string | null = null;
-    if (result && typeof result === "object") {
-      if ("fillTransactionHash" in result) {
-        transactionHash = result.fillTransactionHash as string;
-      } else if ("transactionHash" in result) {
-        transactionHash = result.transactionHash as string;
-      }
-    }
+    const provider = resolveDcaExecutionProvider();
+    const execution = await executeDueDcaPositions(body);
 
     return NextResponse.json({
-      ok: true,
-      smartAccountAddress,
-      transaction,
-      transactionHash,
-      result,
+      ...execution,
+      provider,
+      consensusPrice: body.consensusPrice,
+      executionTimestamp: body.executionTimestamp,
     });
   } catch (error) {
     console.error("DCA execution error:", error);

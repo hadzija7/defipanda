@@ -16,7 +16,7 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 
 ## High-Level Data Flow
 1. User configures or updates strategy in the web app.
-2. Web layer writes/reads strategy state (exact persistence model TBD).
+2. Web layer writes/reads DCA positions in PostgreSQL (`dca_positions` table).
 3. CRE workflow executes DCA actions according to configured rules.
 4. Monitoring captures execution outcomes and alerts on failure conditions.
 5. Web app surfaces status and recent execution outcomes.
@@ -81,9 +81,17 @@ Reown AppKit provides a unified client-side solution for social login + embedded
 - `unifiedWalletAuth: true`: auth and wallet creation happen in a single client-side flow
 
 ### Provider Selection
-- `AUTH_PROVIDER` env var selects auth provider (`google_oidc` default, `zerodev_social`, `walletconnect`, `reown_appkit`)
-- `SMART_ACCOUNT_PROVIDER` env var selects smart account provider (`zerodev` default, `walletconnect`, `reown_appkit`)
+- `AUTH_PROVIDER` env var selects auth provider (`google_oidc` default, `zerodev_social`, `walletconnect`, `reown_appkit`, `privy`)
+- `SMART_ACCOUNT_PROVIDER` env var selects smart account provider (`zerodev` default, `walletconnect`, `reown_appkit`, `privy`)
 - Adapters are registered at startup and resolved through facade APIs
+- `WalletProviderRoot` in app layout mounts Reown AppKit/Wagmi only when `AUTH_PROVIDER=reown_appkit`
+- `WalletProviderRoot` mounts Privy (`PrivyProvider` + Privy Wagmi + React Query) only when `AUTH_PROVIDER=privy`
+- Non-Reown modes render a safe provider-status UI for the DCA page instead of hard failing on missing Reown env vars
+- `zerodev_social` mode now initializes client-side social auth via `@zerodev/social-validator` and derives a Kernel account address for read-only wallet UX (balances + address)
+- Privy mode reuses the Rhinestone client/session flow and does not affect existing Reown/ZeroDev modes unless selected
+- Privy mode env contract: `NEXT_PUBLIC_PRIVY_APP_ID` (required), `NEXT_PUBLIC_PRIVY_CHAIN_ID` (optional), `NEXT_PUBLIC_PRIVY_RPC_URL` (optional)
+- Privy client-side chain resolution is isolated from `SMART_ACCOUNT_CHAIN_ID`; it uses `NEXT_PUBLIC_PRIVY_CHAIN_ID` or falls back to `activeNetwork.chainId` to prevent accidental mainnet (`1`) chain-switch requests
+- Privy runtime now prefers embedded Privy wallets as the active wagmi wallet to avoid binding to injected wallets that may be on chain 1
 
 ### Extension Points
 - New providers implement `IAuthProviderAdapter` or `ISmartAccountProviderAdapter`
@@ -103,7 +111,7 @@ Rhinestone SDK wraps the Reown AppKit walletClient to provide:
 - **Backend DCA Endpoint**: `/api/dca/execute` uses session key to submit ERC-20 transfers
   on behalf of the user's Rhinestone smart account
 
-## DCA Execution Pipeline (Phase 6 - Planned)
+## DCA Execution Pipeline (Phase 9 - Implemented)
 
 ### Design: CRE Smart Trigger + Backend Executor
 
@@ -127,9 +135,45 @@ Rhinestone session key custody:
 | HTTP POST | Trigger backend execution (cacheSettings for single-call) |
 | Secrets | Backend auth token via Vault DON |
 
+### Execution Scheduling (DB-Backed)
+- DCA positions stored in PostgreSQL `dca_positions` table with `interval_seconds` and `last_executed_at`
+- On CRE trigger, backend queries `getDuePositions()`: active positions where `now - last_executed_at >= interval_seconds`
+- After execution, `markExecuted()` updates `last_executed_at`, `total_executions`, and tx hash/error
+- One position per smart account (unique index on `smart_account_address`)
+
+### Smart Account Deployment + Session Enable (Atomic)
+- Rhinestone smart accounts are counterfactual: address is deterministic but contract is not deployed until the first sponsored intent
+- Frontend DCA activation uses `rhinestoneAccount.sendTransaction({ sponsored: true })` with `experimental_enableSession()` to atomically deploy the account and install the session on-chain
+- Backend pre-checks `getCode()` and skips undeployed accounts with a clear re-activation message
+
+### Session Key Authorization (Smart Sessions)
+- User grants a scoped DCA session on first activation via `experimental_signEnableSession`
+- Session definition: `approve(USDC)` + `exactInputSingle(SwapRouter02)` with spending-limit policy
+- Enable signature + session hashes stored in `dca_positions` table
+- Session is deterministic: frontend builds with backend signer address, backend builds with private key — both produce identical session hashes
+- Session is installed on-chain during the atomic deploy+enable intent; backend uses `experimental_session` signer type
+
+### DCA Execution via Rhinestone Orchestrator (Intent System)
+- Backend submits session-key intents via `prepareTransaction` → `signTransaction` → `submitTransaction` with `sponsored: true`
+- The orchestrator's filler executes the approve+swap calls on-chain via `executeSinglechainOps`
+- `sponsored: true` is required for session-key intents; without it the orchestrator routes through Permit2/Paymaster which violate session permissions
+- SDK `waitForExecution` returns early at PRECONFIRMED status; backend uses custom `waitForIntentFill` that polls until COMPLETED/FILLED (up to 120s)
+- Intent lifecycle: PENDING → PRECONFIRMED (filler claims) → COMPLETED (`fillTransactionHash` available)
+
+### Modular Execution Engine Switching
+- `/api/dca/execute` delegates to provider-specific executors selected by env:
+  - `DCA_EXECUTION_PROVIDER=rhinestone` (default when `SMART_ACCOUNT_PROVIDER=reown_appkit`)
+  - `DCA_EXECUTION_PROVIDER=rhinestone` (default when `SMART_ACCOUNT_PROVIDER=privy`)
+  - `DCA_EXECUTION_PROVIDER=zerodev` (default when `SMART_ACCOUNT_PROVIDER=zerodev`)
+- Executors are implemented as separate modules under `web/src/lib/dca/executors/`
+- Due-position selection is provider-scoped via `dca_positions.smart_account_provider`
+- Rhinestone executor processes provider scopes `reown_appkit` and `privy`
+- Strategy records are isolated per provider using unique key `(smart_account_address, smart_account_provider)`
+- ZeroDev social flow generates/stores serialized permission accounts (`zerodev_permission_account`) and backend execution deserializes them with backend session signer for automated swaps
+
 ### Double-Execution Prevention
-- CRE: `cacheSettings.readFromCache = true` deduplicates across DON nodes
-- Backend: idempotency key in request body prevents duplicate transactions
+- CRE: `cacheSettings` with short `maxAge` (10s) deduplicates across DON nodes within a single trigger
+- DB: `getDuePositions()` interval check (`NOW() - last_executed_at >= interval_seconds`) is the sole dedup mechanism on the backend; `markExecuted()` updates `last_executed_at` immediately after each swap
 
 ### Future Evolution Path
 After Option B is proven, explore moving signing into CRE itself:
@@ -146,10 +190,11 @@ After Option B is proven, explore moving signing into CRE itself:
 - Monitoring: TBD (tooling not chosen yet)
 
 ## Key Unknowns To Resolve Next
-1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime?
-2. Which DEX router to target for session key permissions (Uniswap V3 on Base Sepolia).
+1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
+2. Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia — needs testnet verification.
 3. Monitoring stack selection and alert channels.
 4. Deployment model (environments, secrets handling, promotion flow).
+5. Production job queue for sequential nonce management across concurrent users.
 
 ## Initial Conventions
 - Keep all workflow secrets out of source control.

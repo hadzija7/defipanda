@@ -13,6 +13,7 @@
 - Maturity: early stage (architecture-first, specs evolving)
 
 ## Repository Map
+- **System specification:** `specs/system-specification.md` (master spec — start here)
 - Architecture: `docs/architecture.md`
 - Core principles: `docs/core-beliefs.md`
 - Quality scorecard: `docs/quality.md`
@@ -35,5 +36,5 @@
 - CRE workflow run: `cd cre/dca-workflow && npm run start`
 
 ## Environment Notes
-- `cre/.env` exists and should not be committed publicly.
-- Treat `cre/secrets.yaml` as sensitive configuration.
+- `cre/.env` contains real secrets (private keys, tokens) and is gitignored. See `cre/.env.example` for the required variables.
+- `cre/secrets.yaml` is a structural mapping (secret name → env var name) with no actual values. It is safe to commit and required by the CRE CLI.

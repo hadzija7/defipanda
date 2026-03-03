@@ -34,7 +34,12 @@ export function getAuthProviderIds(): AuthProviderId[] {
 const DEFAULT_AUTH_PROVIDER: AuthProviderId = "google_oidc";
 
 function normalizeProviderId(raw: string | undefined): AuthProviderId {
-  if (raw === "zerodev_social" || raw === "walletconnect" || raw === "reown_appkit") {
+  if (
+    raw === "zerodev_social" ||
+    raw === "walletconnect" ||
+    raw === "reown_appkit" ||
+    raw === "privy"
+  ) {
     return raw;
   }
   return DEFAULT_AUTH_PROVIDER;

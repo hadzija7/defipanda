@@ -9,6 +9,7 @@ import { registerSmartAccountProvider } from "./registry";
 import { zerodevSmartAccountAdapter } from "./adapters/zerodev";
 import { walletconnectSmartAccountAdapter } from "./adapters/walletconnect";
 import { reownAppKitSmartAccountAdapter } from "./adapters/reown-appkit";
+import { privySmartAccountAdapter } from "./adapters/privy";
 
 let initialized = false;
 
@@ -20,6 +21,7 @@ export function initializeSmartAccountProviders(): void {
   registerSmartAccountProvider(zerodevSmartAccountAdapter);
   registerSmartAccountProvider(walletconnectSmartAccountAdapter);
   registerSmartAccountProvider(reownAppKitSmartAccountAdapter);
+  registerSmartAccountProvider(privySmartAccountAdapter);
 
   initialized = true;
 }

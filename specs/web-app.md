@@ -191,14 +191,20 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
   - `google_oidc` (default)
   - `zerodev_social`
   - `walletconnect` (registered but not runtime-enabled)
+  - `privy`
 - `SMART_ACCOUNT_PROVIDER`:
   - `zerodev` (default)
   - `walletconnect` (registered but not runtime-enabled)
+  - `privy`
 - `NEXT_PUBLIC_ZERODEV_PROJECT_ID` (required when `AUTH_PROVIDER=zerodev_social`)
 - `NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER` (optional: `google` default, `facebook`)
 - `NEXT_PUBLIC_ZERODEV_CHAIN_ID` (optional: chain ID for ZeroDev social, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_ZERODEV_RPC_URL` (recommended for client-side ZeroDev social/bundler transport; falls back to `ZERODEV_RPC_URL`)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required when `AUTH_PROVIDER=walletconnect`)
 - `NEXT_PUBLIC_WALLETCONNECT_CHAIN_ID` (optional: chain ID for WalletConnect, defaults to `SMART_ACCOUNT_CHAIN_ID` or `1`)
+- `NEXT_PUBLIC_PRIVY_APP_ID` (required when `AUTH_PROVIDER=privy`)
+- `NEXT_PUBLIC_PRIVY_CHAIN_ID` (optional: chain ID for Privy mode; defaults to `activeNetwork.chainId` and does not inherit `SMART_ACCOUNT_CHAIN_ID`)
+- `NEXT_PUBLIC_PRIVY_RPC_URL` (optional: RPC URL override for Privy Wagmi transport)
 
 ### Auth Provider Adapters
 | Provider | Server Session | Client Login | Smart Account Provisioning | Unified Wallet Auth |
@@ -206,12 +212,14 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
 | `google_oidc` | ✓ | ✗ | ✓ | ✗ |
 | `zerodev_social` | ✗ | ✓ | ✗ | ✓ |
 | `walletconnect` | ✗ | ✓ | ✗ | ✓ |
+| `privy` | ✗ | ✓ | ✗ | ✓ |
 
 ### Smart Account Provider Adapters
 | Provider | Server Provisioning | UserOp Submission | External Wallet |
 |----------|--------------------|--------------------|-----------------|
 | `zerodev` | ✓ | ✓ | ✗ |
 | `walletconnect` | ✗ | ✓ | ✓ |
+| `privy` | ✗ | ✓ (client-side via wagmi) | ✗ |
 
 ### Updated Endpoints
 - `GET /auth/provider`
@@ -231,6 +239,8 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
 - Wallet provisioning hook uses `authMetadata.capabilities.smartAccountProvisioning` check.
 - WalletConnect adapters are registered but return not-implemented errors when called.
 - Unified wallet auth providers (ZeroDev Social, WalletConnect) create wallets client-side; `/auth/me` returns server-provisioned wallet only.
+- Privy adapters are registered as client-side unified-wallet providers and reuse the Rhinestone smart-account path.
+- In Privy mode, the app explicitly prefers the embedded Privy wallet when choosing the active wagmi wallet, to avoid accidental injected-wallet (chain 1) selection.
 - Frontend displays unified wallet status for client-side auth sessions using provider capabilities.
 
 ### Implementation Files (Stage 3 - Full Architecture)
@@ -241,6 +251,7 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
 - `web/src/lib/auth/providers/adapters/google-oidc.ts` - Google adapter
 - `web/src/lib/auth/providers/adapters/zerodev-social.ts` - ZeroDev social adapter
 - `web/src/lib/auth/providers/adapters/walletconnect.ts` - WalletConnect placeholder
+- `web/src/lib/auth/providers/adapters/privy.ts` - Privy adapter
 
 **Smart Account Provider Layer:**
 - `web/src/lib/wallet/providers/types.ts` - Provider contracts and interfaces
@@ -248,6 +259,7 @@ Providers with `unifiedWalletAuth: true` handle both authentication AND smart ac
 - `web/src/lib/wallet/providers/setup.ts` - Auto-registration
 - `web/src/lib/wallet/providers/adapters/zerodev.ts` - ZeroDev adapter
 - `web/src/lib/wallet/providers/adapters/walletconnect.ts` - WalletConnect placeholder
+- `web/src/lib/wallet/providers/adapters/privy.ts` - Privy smart account adapter
 
 **Updated Route/UI Files:**
 - `web/src/app/auth/login/route.ts` - Uses AuthFacade
@@ -265,10 +277,17 @@ Status: Implemented
 - Integrate via the existing dual-plane adapter architecture without disrupting existing providers.
 
 ### Architecture
-- AppKit wraps the entire app via `AppKitProvider` in root layout (SSR cookie hydration via Wagmi).
+- AppKit is runtime-gated by `WalletProviderRoot` and only wraps the app when `AUTH_PROVIDER=reown_appkit` (SSR cookie hydration via Wagmi).
+- Privy is runtime-gated by `WalletProviderRoot` and only wraps the app when `AUTH_PROVIDER=privy` (`PrivyProvider` + `@privy-io/wagmi` + React Query).
 - `<appkit-button>` web component provides the auth modal (social logins, email, wallets).
 - Client-side state managed via `useAppKitAccount` and `useAccount` hooks.
 - No server-side provisioning needed: AppKit creates embedded wallets as part of the login flow.
+- Non-Reown modes use a provider-status fallback screen on `src/app/page.tsx` to avoid Reown/Wagmi runtime crashes when Reown env vars are intentionally unset.
+- `zerodev_social` mode now uses `@zerodev/social-validator` (`initiateLogin`, `isAuthorized`, `getSocialValidator`) to derive a client-side Kernel account and display on-chain balances.
+- DCA submit/execution remains backed by Rhinestone session-key flow (`/api/dca/execute`), so ZeroDev mode currently provides wallet connectivity/read UX but not ZeroDev-based automated execution.
+- Privy mode reuses the same Rhinestone smart-account/session-key flow as Reown mode with provider-scoped strategy records.
+- `/api/dca/execute` now uses modular executor routing (`rhinestone` vs `zerodev`) via env `DCA_EXECUTION_PROVIDER`; strategy rows are provider-scoped by `smart_account_provider`.
+- ZeroDev DCA activation now builds a permission plugin (`@zerodev/permissions`), captures plugin enable signature, and stores serialized permission-account payload in strategy for backend execution.
 
 ### Auth Provider Adapter
 | Provider | Server Session | Client Login | Smart Account Provisioning | Unified Wallet Auth |

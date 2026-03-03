@@ -1,3 +1,7 @@
 {
-  "schedule": "*/30 * * * * *"
+  "schedule": "0 */5 * * * *",
+  "priceFeedAddress": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+  "priceFeedChainSelectorName": "ethereum-testnet-sepolia",
+  "maxSlippageBps": 50,
+  "minPriceFeedFreshnessSeconds": 300
 }

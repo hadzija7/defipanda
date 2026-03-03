@@ -5,7 +5,12 @@
  * Each provider can have different capabilities (server-side vs client-side).
  */
 
-export type AuthProviderId = "google_oidc" | "zerodev_social" | "walletconnect" | "reown_appkit";
+export type AuthProviderId =
+  | "google_oidc"
+  | "zerodev_social"
+  | "walletconnect"
+  | "reown_appkit"
+  | "privy";
 
 export type AuthProviderCapabilities = {
   /** Provider can issue server-side sessions */

@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, cookieToInitialState, type Config } from "wagmi";
 import { createAppKit } from "@reown/appkit/react";
 import { config, networks, projectId, wagmiAdapter } from "@/config";
-import { mainnet } from "@reown/appkit/networks";
+import { sepolia } from "@reown/appkit/networks";
 
 const queryClient = new QueryClient();
 
@@ -16,12 +16,12 @@ const metadata = {
   icons: ["/favicon.ico"],
 };
 
-if (projectId) {
+if (projectId && wagmiAdapter) {
   createAppKit({
     adapters: [wagmiAdapter],
     projectId,
     networks,
-    defaultNetwork: mainnet,
+    defaultNetwork: sepolia,
     metadata,
     features: {
       analytics: true,
@@ -40,6 +40,12 @@ export default function AppKitProvider({
   children: ReactNode;
   cookies: string | null;
 }) {
+  if (!projectId || !wagmiAdapter || !config) {
+    throw new Error(
+      "NEXT_PUBLIC_REOWN_PROJECT_ID is required when AUTH_PROVIDER=reown_appkit",
+    );
+  }
+
   const initialState = cookieToInitialState(config as Config, cookies);
 
   return (
