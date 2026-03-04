@@ -85,7 +85,7 @@ portfolio rebalancing, AI-driven timing), but v1 is pure time-based DCA.
 - **Verifiable execution trail**: cryptographic proof of what price was observed and when
 
 ### What the backend adds
-- **Session key custody**: holds `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (scoped session key, NOT the account owner)
+- **Session key custody**: holds `BACKEND_SIGNER_PRIVATE_KEY` (scoped session key, NOT the account owner)
 - **Rhinestone SDK integration**: targets user's account via `initData`, signs with session key, submits via prepare/sign/submit intent flow
 - **User account + strategy mapping**: knows which smart account to execute for, with what amount
 - **Auth/session management**: manages user identity and DCA preferences

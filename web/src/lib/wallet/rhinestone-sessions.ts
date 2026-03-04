@@ -109,9 +109,9 @@ export function buildBackendDcaSession(config: {
  * Get the backend signer account from the private key env var.
  */
 export function getBackendSignerAccount() {
-  const privateKey = process.env.SMART_ACCOUNT_OWNER_PRIVATE_KEY as Hex | undefined;
+  const privateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY as Hex | undefined;
   if (!privateKey) {
-    throw new Error("SMART_ACCOUNT_OWNER_PRIVATE_KEY is required for backend DCA session key operations");
+    throw new Error("BACKEND_SIGNER_PRIVATE_KEY is required for backend DCA session key operations");
   }
   return privateKeyToAccount(privateKey);
 }

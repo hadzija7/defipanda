@@ -64,7 +64,7 @@ export async function executeRhinestoneDca(
     return { ok: true, executionsTriggered: 0, results: [] };
   }
 
-  const backendPrivateKey = getRequiredEnv("SMART_ACCOUNT_OWNER_PRIVATE_KEY") as Hex;
+  const backendPrivateKey = getRequiredEnv("BACKEND_SIGNER_PRIVATE_KEY") as Hex;
   const rhinestoneApiKey = getRequiredEnv("RHINESTONE_API_KEY");
   const backendSignerAccount = privateKeyToAccount(backendPrivateKey);
   const chain = activeNetwork.chain;

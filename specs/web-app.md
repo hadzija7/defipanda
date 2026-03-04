@@ -124,7 +124,7 @@ Status: Implemented
 - `ENABLE_SMART_ACCOUNT_PROVISIONING` (feature flag, default: disabled)
 - `SMART_ACCOUNT_RPC_URL` (required when enabled, e.g. Tenderly Virtualnet URL)
 - `SMART_ACCOUNT_CHAIN_ID` (default: 1)
-- `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (required when enabled, server-managed signer key)
+- `BACKEND_SIGNER_PRIVATE_KEY` (required when enabled, server-managed signer key)
 - `ZERODEV_RPC_URL` (optional, bundler RPC; defaults to `SMART_ACCOUNT_RPC_URL`)
 
 ### Test Coverage (Stage 2)
@@ -342,7 +342,7 @@ Status: Implemented
 - Portfolio: unified cross-chain balance view via orchestrator API
 
 ### Session Keys for DCA
-- Backend signer (`SMART_ACCOUNT_OWNER_PRIVATE_KEY`) is granted a session key with:
+- Backend signer (`BACKEND_SIGNER_PRIVATE_KEY`) is granted a session key with:
   - `spending-limits` policy: caps total ERC-20 transfer amount per session
   - `time-frame` policy: session expires after configured duration (default 30 days)
 - User enables the session with a single on-chain transaction (signs once)
@@ -350,7 +350,7 @@ Status: Implemented
 
 ### Environment Variables
 - `RHINESTONE_API_KEY` (server-side only, proxied via orchestrator route)
-- `SMART_ACCOUNT_OWNER_PRIVATE_KEY` (existing, reused as session key owner for DCA)
+- `BACKEND_SIGNER_PRIVATE_KEY` (existing, reused as session key owner for DCA)
 
 ### Implementation Files
 - `web/src/app/api/orchestrator/[...path]/route.ts` - Rhinestone API proxy (keeps key server-side)

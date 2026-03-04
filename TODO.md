@@ -190,8 +190,69 @@
 - [ ] Verify CRE CLI auth works headlessly (CRE_API_KEY)
 - [ ] Verify end-to-end: cre-cron → POST /api/dca/execute → Rhinestone swap
 
+## Phase 9.6 - Documentation & Repo Hygiene
+- [x] Add root `README.md` with self-hosting guide, architecture overview, and env var table
+- [x] Create `web/.env.example` focused on Privy + Rhinestone (working config)
+- [x] Curate `.env.docker` — Privy + Rhinestone primary, ZeroDev/ReOwn/Google OAuth commented out
+- [x] Remove `.DS_Store` from git tracking
+- [x] Add `!.env.example` exception to `web/.gitignore`
+- [x] Update quality scorecard (Documentation C → C+)
+
 ## Phase 10 - Hybrid CRE Execution (Experimental)
 - [ ] Verify viem noble-curves secp256k1 works in CRE QuickJS WASM runtime
 - [ ] If compatible: store session key as CRE secret, sign transactions inside CRE
 - [ ] If compatible: submit signed transactions via HTTP POST to RPC (eliminate backend from execution path)
 - [ ] If incompatible: document limitations, stay with Phase 9 architecture
+
+## Phase 10.5 - Landing Page & App Restructuring
+- [x] Restructure routes: landing page at `/`, DCA dashboard at `/app`
+- [x] Strip WalletProviderRoot from root layout (landing page is static)
+- [x] Create `/app` nested layout with wallet provider wrappers
+- [x] Build landing page with hero, features, how-it-works, roadmap, CTA sections
+- [x] Add CSS animations (fade-in-up, gradient shift, float)
+- [x] Replace "Integrated with Leading Protocols" section with architecture flow diagram (auth → Privy → wallet → Rhinestone → CRE → Uniswap)
+- [x] Update metadata for SEO (title, description)
+- [x] Re-theme DCA dashboard (`/app`) — buttons, inputs, banners, links from green/blue to amber-500
+- [ ] Deploy to Vercel (or add reverse proxy config for VPS)
+- [ ] Add custom domain
+- [ ] Add Open Graph / Twitter card meta images
+
+## Phase 11 - Mainnet Launch (Next Phase)
+
+> Full plan: `docs/plans/active/phase11-mainnet-launch.md`
+
+### 11.1 - Gas Strategy Resolution
+- [ ] Contact Rhinestone re: mainnet `sponsored: true` billing model
+- [ ] If unavailable: spike Pimlico ERC-20 paymaster + Rhinestone Safe interop
+- [ ] Decision: confirm gas strategy for mainnet
+
+### 11.2 - Multi-Network Foundation
+- [ ] Add `chain_id` column to `dca_positions` (migration)
+- [ ] Add Ethereum Mainnet `NetworkConfig` (USDC, WETH, SwapRouter02, Chainlink feed)
+- [ ] Add `gasStrategy`, `isTestnet`, `blockExplorerUrl` to `NetworkConfig`
+- [ ] Make store queries and executor chain-aware
+
+### 11.3 - Frontend Network Selector
+- [ ] Create `NetworkContext` provider (localStorage persistence)
+- [ ] Add network dropdown to UI header
+- [ ] Re-derive Rhinestone account + reload balances on switch
+- [ ] Show testnet badge when on Sepolia
+
+### 11.4 - Mainnet Gas Execution
+- [ ] (Option A) Test `sponsored: true` on mainnet with funded Rhinestone account
+- [ ] (Option C) Build `executors/rhinestone-direct.ts` with Pimlico bundler + paymaster
+- [ ] Network-aware executor routing in `executors/index.ts`
+- [ ] Frontend paymaster for user-initiated transactions
+- [ ] End-to-end mainnet DCA test (small amounts)
+
+### 11.5 - Monetization (V1.1)
+- [ ] Add fee calculation to executor (`feeBps` config, reduced swap amount)
+- [ ] Show fee breakdown in frontend DCA configuration UI
+- [ ] (V1.1) Expand session with `transfer(USDC)` action for fee collection
+- [ ] (V1.1) Add fee transfer call to executor + treasury address config
+
+### 11.6 - Per-Chain CRE Automation
+- [ ] Create mainnet CRE workflow config (mainnet price feed + chain selector)
+- [ ] Add `cre-cron-mainnet` service to `docker-compose.yml`
+- [ ] Verify Chainlink mainnet price feed reads via CRE
+- [ ] Tune `CRE_CRON_INTERVAL_SECONDS` for mainnet gas economics

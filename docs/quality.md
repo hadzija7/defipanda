@@ -17,7 +17,7 @@ Last Updated: 2026-03-03
 | Observability | F | Monitoring architecture not finalized; auth UI now emits provider-specific ZeroDev login error details to browser console for faster triage |
 | Performance | F | No baseline measurements yet |
 | CI/CD | D | Docker Compose self-hosting scaffolded; CRE entrypoint validates `CRE_CRON_INTERVAL_SECONDS` to prevent crash-on-bad-input; no CI pipeline yet |
-| Documentation | C | Initial scaffold established |
+| Documentation | C+ | README with self-hosting guide; `.env.example` templates for web/ and Docker; architecture docs exist |
 
 ## Known Gaps
 - DCA positions now stored in PostgreSQL (`dca_positions` table) with interval-based scheduling.

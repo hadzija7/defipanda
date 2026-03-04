@@ -21,6 +21,14 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 4. Monitoring captures execution outcomes and alerts on failure conditions.
 5. Web app surfaces status and recent execution outcomes.
 
+## Route Architecture
+- `/` — Static landing page (server component, no wallet context). Explains vision, features, roadmap, and links to the app.
+- `/app` — DCA dashboard (client component, wrapped in `WalletProviderRoot`). Wallet connection, balances, strategy management.
+- `/api/*` — Backend API routes (DCA execution, orchestrator proxy, strategy CRUD).
+- `/auth/*` — Authentication routes (provider login, callback, session management).
+
+The root layout (`app/layout.tsx`) is minimal (HTML, body, fonts, CSS). The `/app` route has its own nested layout (`app/app/layout.tsx`) that mounts wallet providers. This keeps the landing page static/SSG-friendly for performance and SEO.
+
 ## Current Directory Map
 - `web/`: Next.js app and server-side API bridge for local CRE simulation.
 - `cre/`: CRE project files and `dca-workflow/` implementation.
@@ -219,12 +227,23 @@ The full stack can run on a single machine via `docker compose up --build`:
 - Deployment: Docker Compose (postgres + web + cre-cron)
 - Monitoring: TBD (tooling not chosen yet)
 
+## Mainnet Launch Plan (Phase 11)
+
+See `docs/plans/active/phase11-mainnet-launch.md` for the full plan covering:
+- **Gas strategy:** Rhinestone-funded sponsorship (Option A) or direct 4337 bundler + ERC-20 paymaster (Option C)
+- **Multi-network support:** Frontend network selector, `chain_id` on DB positions, per-chain CRE workflows
+- **Monetization (V1):** Fee deducted from swap input amount (no custom contract); V1.1 adds session-key fee collection to treasury; V2 adds a protocol contract
+
+Key design constraint: **no custom smart contracts for V1** — all execution through existing Uniswap V3 router and Rhinestone session keys.
+
 ## Key Unknowns To Resolve Next
 1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
-2. Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia — needs testnet verification.
-3. Monitoring stack selection and alert channels.
-4. CRE API key authentication for headless Docker container use.
-5. Production job queue for sequential nonce management across concurrent users.
+2. Rhinestone mainnet `sponsored: true` billing model — does it exist? (Phase 11.1)
+3. Pimlico ERC-20 paymaster interop with Rhinestone Safe + 7579 modules (Phase 11.4)
+4. Minimum viable DCA amount on mainnet given gas costs
+5. Monitoring stack selection and alert channels.
+6. CRE API key authentication for headless Docker container use.
+7. Production job queue for sequential nonce management across concurrent users.
 
 ## Initial Conventions
 - Keep all workflow secrets out of source control.

@@ -25,7 +25,7 @@ SMART_ACCOUNT_CHAIN_ID=1
 
 # Server-managed owner private key (hex with 0x prefix)
 # WARNING: Keep this secret! Never commit to version control.
-SMART_ACCOUNT_OWNER_PRIVATE_KEY=0x...
+BACKEND_SIGNER_PRIVATE_KEY=0x...
 
 # Optional: ZeroDev bundler RPC (defaults to SMART_ACCOUNT_RPC_URL if not set)
 # Use this if you want to use ZeroDev's bundler infrastructure
