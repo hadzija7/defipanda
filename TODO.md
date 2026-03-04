@@ -190,6 +190,14 @@
 - [ ] Verify CRE CLI auth works headlessly (CRE_API_KEY)
 - [ ] Verify end-to-end: cre-cron → POST /api/dca/execute → Rhinestone swap
 
+## Phase 9.6 - Documentation & Repo Hygiene
+- [x] Add root `README.md` with self-hosting guide, architecture overview, and env var table
+- [x] Create `web/.env.example` focused on Privy + Rhinestone (working config)
+- [x] Curate `.env.docker` — Privy + Rhinestone primary, ZeroDev/ReOwn/Google OAuth commented out
+- [x] Remove `.DS_Store` from git tracking
+- [x] Add `!.env.example` exception to `web/.gitignore`
+- [x] Update quality scorecard (Documentation C → C+)
+
 ## Phase 10 - Hybrid CRE Execution (Experimental)
 - [ ] Verify viem noble-curves secp256k1 works in CRE QuickJS WASM runtime
 - [ ] If compatible: store session key as CRE secret, sign transactions inside CRE

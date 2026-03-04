@@ -56,9 +56,9 @@ export function getWalletConfig(): WalletConfig {
     throw new Error(`Invalid SMART_ACCOUNT_CHAIN_ID: ${chainIdStr}`);
   }
 
-  const ownerPrivateKey = getRequiredEnv("SMART_ACCOUNT_OWNER_PRIVATE_KEY");
+  const ownerPrivateKey = getRequiredEnv("BACKEND_SIGNER_PRIVATE_KEY");
   if (!ownerPrivateKey.startsWith("0x")) {
-    throw new Error("SMART_ACCOUNT_OWNER_PRIVATE_KEY must start with 0x");
+    throw new Error("BACKEND_SIGNER_PRIVATE_KEY must start with 0x");
   }
 
   const bundlerRpcUrl = process.env.ZERODEV_RPC_URL || rpcUrl;

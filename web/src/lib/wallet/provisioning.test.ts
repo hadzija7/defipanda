@@ -48,7 +48,7 @@ describe("ensureSmartAccountForUser", () => {
     process.env.ENABLE_SMART_ACCOUNT_PROVISIONING = "true";
     process.env.SMART_ACCOUNT_RPC_URL = "https://virtual.mainnet.rpc.tenderly.co/test";
     process.env.SMART_ACCOUNT_CHAIN_ID = "1";
-    process.env.SMART_ACCOUNT_OWNER_PRIVATE_KEY = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    process.env.BACKEND_SIGNER_PRIVATE_KEY = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     mockCreatePublicClient.mockReturnValue({});
     mockPrivateKeyToAccount.mockReturnValue({ address: "0xOwner" });

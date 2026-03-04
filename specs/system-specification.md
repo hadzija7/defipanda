@@ -206,7 +206,7 @@ Two independent provider planes with facade pattern:
 | `src/lib/wallet/index.ts` | Module barrel exports |
 
 **Session key model:**
-- Backend signer (`SMART_ACCOUNT_OWNER_PRIVATE_KEY`) holds a scoped session key
+- Backend signer (`BACKEND_SIGNER_PRIVATE_KEY`) holds a scoped session key
 - Permissions: `approve` on USDC + `exactInputSingle` on SwapRouter02
 - Policies: spending-limits (1000 USDC default), time-frame (30 days default)
 - User enables once with a single on-chain signature
@@ -362,7 +362,7 @@ See section 3.1.5 for table details.
 | `NEXT_PUBLIC_PRIVY_CHAIN_ID` | No | Optional chain override for Privy mode |
 | `NEXT_PUBLIC_PRIVY_RPC_URL` | No | Optional RPC URL override for Privy wagmi transport |
 | `RHINESTONE_API_KEY` | Yes | Rhinestone orchestrator API key (server-side only) |
-| `SMART_ACCOUNT_OWNER_PRIVATE_KEY` | Yes | Backend signer private key for session key DCA execution |
+| `BACKEND_SIGNER_PRIVATE_KEY` | Yes | Backend signer private key for session key DCA execution |
 | `CRE_BACKEND_AUTH_TOKEN` | Yes | Token CRE uses to authenticate with backend |
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `AUTH_SESSION_SECRET` | Yes (prod) | Cookie signing secret |
