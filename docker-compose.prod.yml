@@ -13,9 +13,9 @@ services:
     ports: !override []
 
   web:
-    ports:
+    ports: !override
       - "127.0.0.1:3000:3000"
 
   pgadmin:
-    ports:
+    ports: !override
       - "127.0.0.1:5050:80"
