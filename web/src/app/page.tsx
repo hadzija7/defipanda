@@ -90,18 +90,18 @@ function Hero() {
 
 function FlowCard({ title, desc, accent }: { title: string; desc: string; accent: string }) {
   return (
-    <div className="flex w-52 flex-col items-center rounded-2xl border border-zinc-200/80 bg-white p-6 text-center shadow-sm transition-all hover:border-amber-300/60 hover:shadow-md">
+    <div className="flex w-56 flex-col items-center rounded-2xl border border-zinc-200/80 bg-white p-7 text-center shadow-sm transition-all hover:border-amber-300/60 hover:shadow-md">
       <div className={`mb-3 h-2 w-10 rounded-full ${accent}`} />
-      <span className="text-base font-bold text-zinc-900">{title}</span>
-      <span className="mt-1.5 text-sm leading-snug text-zinc-400">{desc}</span>
+      <span className="text-lg font-bold text-zinc-900">{title}</span>
+      <span className="mt-1.5 text-[15px] leading-snug text-zinc-400">{desc}</span>
     </div>
   );
 }
 
 function FlowArrowH({ label }: { label: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-1.5 px-2">
-      <span className="whitespace-nowrap text-xs font-semibold text-zinc-400">{label}</span>
+    <div className="flex flex-1 flex-col items-center gap-1.5 px-3">
+      <span className="whitespace-nowrap text-sm font-semibold text-zinc-400">{label}</span>
       <div className="flex w-full items-center">
         <div className="h-px flex-1 bg-zinc-300" />
         <svg width="9" height="12" viewBox="0 0 7 10" className="shrink-0 text-zinc-300">
@@ -124,7 +124,7 @@ function ArchitectureDiagram() {
 
   return (
     <section className="bg-white py-24 sm:py-32">
-      <div className="mx-auto max-w-5xl px-6">
+      <div className="mx-auto max-w-6xl px-6">
         <h2 className="animate-fade-in-up text-center text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
           How it all<br />
           <span className="text-amber-500">works together</span>
@@ -135,7 +135,7 @@ function ArchitectureDiagram() {
 
         {/* ── Desktop diagram ── */}
         <div className="animate-fade-in-up delay-200 mt-16 hidden md:block">
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-amber-500/80">
+          <p className="mb-4 text-sm font-bold uppercase tracking-widest text-amber-500/80">
             Authentication
           </p>
           <div className="flex items-center">
@@ -150,7 +150,7 @@ function ArchitectureDiagram() {
           <div className="flex items-center justify-center py-6">
             <div className="flex flex-col items-center gap-1.5">
               <div className="h-6 w-px bg-zinc-300" />
-              <span className="rounded-full border border-zinc-200 bg-white px-5 py-1.5 text-xs font-semibold text-zinc-500 shadow-sm">
+              <span className="rounded-full border border-zinc-200 bg-white px-6 py-2 text-sm font-semibold text-zinc-500 shadow-sm">
                 Owner Signer
               </span>
               <div className="h-4 w-px bg-zinc-300" />
@@ -160,7 +160,7 @@ function ArchitectureDiagram() {
             </div>
           </div>
 
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-amber-500/80">
+          <p className="mb-4 text-sm font-bold uppercase tracking-widest text-amber-500/80">
             Automated Execution
           </p>
           <div className="flex items-center">
@@ -180,14 +180,14 @@ function ArchitectureDiagram() {
                 <div className="flex w-full items-center gap-4 rounded-xl border border-zinc-200/80 bg-white p-5 shadow-sm">
                   <div className={`h-12 w-1.5 shrink-0 rounded-full ${node.accent}`} />
                   <div>
-                    <p className="text-base font-bold text-zinc-900">{node.title}</p>
-                    <p className="text-sm text-zinc-400">{node.desc}</p>
+                    <p className="text-lg font-bold text-zinc-900">{node.title}</p>
+                    <p className="text-[15px] text-zinc-400">{node.desc}</p>
                   </div>
                 </div>
                 {node.arrow && (
                   <div className="flex flex-col items-center py-2">
                     <div className="h-4 w-px bg-zinc-300" />
-                    <span className="text-xs font-semibold text-zinc-400">{node.arrow}</span>
+                    <span className="text-sm font-semibold text-zinc-400">{node.arrow}</span>
                     <div className="h-3 w-px bg-zinc-300" />
                     <svg width="10" height="8" viewBox="0 0 8 6" className="text-zinc-300">
                       <path d="M1 1l3 4 3-4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -283,15 +283,15 @@ function Roadmap() {
         <h2 className="animate-fade-in-up text-center text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
           Roadmap
         </h2>
-        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-md text-center text-base text-zinc-500">
+        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-md text-center text-lg text-zinc-500">
           Where we are and where we&apos;re going.
         </p>
 
         {/* Horizontal timeline */}
         <div className="animate-fade-in-up delay-200 relative mt-16 overflow-x-auto pb-4">
-          <div className="min-w-[700px]">
+          <div className="min-w-[750px]">
             {/* Dots + line row — flexbox with equal spacing */}
-            <div className="relative mb-8 flex items-center justify-between">
+            <div className="relative mb-10 flex items-center justify-between">
               {/* Background track (full-width grey line) */}
               <div className="absolute left-2 right-2 top-1/2 h-0.5 -translate-y-1/2 bg-zinc-200" />
 
@@ -313,7 +313,7 @@ function Roadmap() {
               {phases.map((phase) => (
                 <div
                   key={`dot-${phase.title}`}
-                  className={`relative z-10 h-4 w-4 shrink-0 rounded-full ${dotColor[phase.status]}`}
+                  className={`relative z-10 h-5 w-5 shrink-0 rounded-full ${dotColor[phase.status]}`}
                 />
               ))}
             </div>
@@ -322,17 +322,17 @@ function Roadmap() {
             <div className="grid grid-cols-4">
               {phases.map((phase, i) => (
                 <div key={phase.title} className={`animate-fade-in-up delay-${(i + 2) * 100} flex flex-col items-center text-center px-3`}>
-                  <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${badgeStyle[phase.status]}`}>
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${badgeStyle[phase.status]}`}>
                     {phase.label}
                   </span>
-                  <h3 className="mt-2 text-base font-bold text-zinc-900">{phase.title}</h3>
-                  <ul className="mt-2 flex flex-col gap-1">
+                  <h3 className="mt-3 text-lg font-bold text-zinc-900">{phase.title}</h3>
+                  <ul className="mt-3 flex flex-col gap-1.5">
                     {phase.items.map((item) => (
-                      <li key={item} className="flex items-start gap-1.5 text-[13px] leading-snug text-zinc-500 text-left">
+                      <li key={item} className="flex items-start gap-2 text-[15px] leading-snug text-zinc-500 text-left">
                         {phase.status === "done" ? (
                           <span className="mt-0.5 shrink-0 text-emerald-500"><IconCheck /></span>
                         ) : (
-                          <span className="mt-[6px] inline-block h-1 w-1 shrink-0 rounded-full bg-zinc-300" />
+                          <span className="mt-[7px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-300" />
                         )}
                         {item}
                       </li>
