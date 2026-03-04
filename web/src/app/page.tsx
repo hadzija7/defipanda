@@ -90,21 +90,21 @@ function Hero() {
 
 function FlowCard({ title, desc, accent }: { title: string; desc: string; accent: string }) {
   return (
-    <div className="flex w-40 flex-col items-center rounded-2xl border border-zinc-200/80 bg-white p-5 text-center shadow-sm transition-all hover:border-amber-300/60 hover:shadow-md">
-      <div className={`mb-2.5 h-1.5 w-8 rounded-full ${accent}`} />
-      <span className="text-sm font-bold text-zinc-900">{title}</span>
-      <span className="mt-1 text-[12px] leading-snug text-zinc-400">{desc}</span>
+    <div className="flex w-52 flex-col items-center rounded-2xl border border-zinc-200/80 bg-white p-6 text-center shadow-sm transition-all hover:border-amber-300/60 hover:shadow-md">
+      <div className={`mb-3 h-2 w-10 rounded-full ${accent}`} />
+      <span className="text-base font-bold text-zinc-900">{title}</span>
+      <span className="mt-1.5 text-sm leading-snug text-zinc-400">{desc}</span>
     </div>
   );
 }
 
 function FlowArrowH({ label }: { label: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-1 px-1">
-      <span className="whitespace-nowrap text-[10px] font-semibold text-zinc-400">{label}</span>
+    <div className="flex flex-1 flex-col items-center gap-1.5 px-2">
+      <span className="whitespace-nowrap text-xs font-semibold text-zinc-400">{label}</span>
       <div className="flex w-full items-center">
         <div className="h-px flex-1 bg-zinc-300" />
-        <svg width="7" height="10" viewBox="0 0 7 10" className="shrink-0 text-zinc-300">
+        <svg width="9" height="12" viewBox="0 0 7 10" className="shrink-0 text-zinc-300">
           <path d="M1.5 1L5.5 5L1.5 9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
@@ -124,18 +124,18 @@ function ArchitectureDiagram() {
 
   return (
     <section className="bg-white py-24 sm:py-32">
-      <div className="mx-auto max-w-4xl px-6">
+      <div className="mx-auto max-w-5xl px-6">
         <h2 className="animate-fade-in-up text-center text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
           How it all<br />
           <span className="text-amber-500">works together</span>
         </h2>
-        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-lg text-center text-base text-zinc-500">
+        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-lg text-center text-lg text-zinc-500">
           Four protocols, one seamless DCA experience.
         </p>
 
         {/* ── Desktop diagram ── */}
         <div className="animate-fade-in-up delay-200 mt-16 hidden md:block">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-amber-500/80">
+          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-amber-500/80">
             Authentication
           </p>
           <div className="flex items-center">
@@ -147,20 +147,20 @@ function ArchitectureDiagram() {
           </div>
 
           {/* Vertical connector */}
-          <div className="flex items-center justify-center py-5">
-            <div className="flex flex-col items-center gap-1">
-              <div className="h-5 w-px bg-zinc-300" />
-              <span className="rounded-full border border-zinc-200 bg-white px-4 py-1 text-[11px] font-semibold text-zinc-500 shadow-sm">
+          <div className="flex items-center justify-center py-6">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="h-6 w-px bg-zinc-300" />
+              <span className="rounded-full border border-zinc-200 bg-white px-5 py-1.5 text-xs font-semibold text-zinc-500 shadow-sm">
                 Owner Signer
               </span>
-              <div className="h-3 w-px bg-zinc-300" />
-              <svg width="8" height="6" viewBox="0 0 8 6" className="text-zinc-300">
+              <div className="h-4 w-px bg-zinc-300" />
+              <svg width="10" height="8" viewBox="0 0 8 6" className="text-zinc-300">
                 <path d="M1 1l3 4 3-4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
           </div>
 
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-amber-500/80">
+          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-amber-500/80">
             Automated Execution
           </p>
           <div className="flex items-center">
@@ -174,22 +174,22 @@ function ArchitectureDiagram() {
 
         {/* ── Mobile diagram (vertical flow) ── */}
         <div className="animate-fade-in-up delay-200 mt-12 md:hidden">
-          <div className="mx-auto flex max-w-xs flex-col items-center">
+          <div className="mx-auto flex max-w-sm flex-col items-center">
             {mobileSteps.map((node) => (
               <div key={node.title} className="flex w-full flex-col items-center">
-                <div className="flex w-full items-center gap-3 rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm">
-                  <div className={`h-10 w-1 shrink-0 rounded-full ${node.accent}`} />
+                <div className="flex w-full items-center gap-4 rounded-xl border border-zinc-200/80 bg-white p-5 shadow-sm">
+                  <div className={`h-12 w-1.5 shrink-0 rounded-full ${node.accent}`} />
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">{node.title}</p>
-                    <p className="text-[12px] text-zinc-400">{node.desc}</p>
+                    <p className="text-base font-bold text-zinc-900">{node.title}</p>
+                    <p className="text-sm text-zinc-400">{node.desc}</p>
                   </div>
                 </div>
                 {node.arrow && (
-                  <div className="flex flex-col items-center py-1.5">
+                  <div className="flex flex-col items-center py-2">
+                    <div className="h-4 w-px bg-zinc-300" />
+                    <span className="text-xs font-semibold text-zinc-400">{node.arrow}</span>
                     <div className="h-3 w-px bg-zinc-300" />
-                    <span className="text-[10px] font-semibold text-zinc-400">{node.arrow}</span>
-                    <div className="h-2 w-px bg-zinc-300" />
-                    <svg width="8" height="6" viewBox="0 0 8 6" className="text-zinc-300">
+                    <svg width="10" height="8" viewBox="0 0 8 6" className="text-zinc-300">
                       <path d="M1 1l3 4 3-4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
