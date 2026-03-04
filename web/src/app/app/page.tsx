@@ -471,6 +471,14 @@ function OnChainBalancesView({
         </div>
       )}
 
+      <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+        Get testnet USDC from the{" "}
+        <a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+          Circle faucet
+        </a>
+        {" "}(select Ethereum Sepolia).
+      </div>
+
     </div>
   );
 }
