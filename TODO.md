@@ -204,6 +204,18 @@
 - [ ] If compatible: submit signed transactions via HTTP POST to RPC (eliminate backend from execution path)
 - [ ] If incompatible: document limitations, stay with Phase 9 architecture
 
+## Phase 10.5 - Landing Page & App Restructuring
+- [x] Restructure routes: landing page at `/`, DCA dashboard at `/app`
+- [x] Strip WalletProviderRoot from root layout (landing page is static)
+- [x] Create `/app` nested layout with wallet provider wrappers
+- [x] Build landing page with hero, features, how-it-works, roadmap, CTA sections
+- [x] Add CSS animations (fade-in-up, gradient shift, float)
+- [x] Replace "Integrated with Leading Protocols" section with architecture flow diagram (auth → Privy → wallet → Rhinestone → CRE → Uniswap)
+- [x] Update metadata for SEO (title, description)
+- [ ] Deploy to Vercel (or add reverse proxy config for VPS)
+- [ ] Add custom domain
+- [ ] Add Open Graph / Twitter card meta images
+
 ## Phase 11 - Mainnet Launch (Next Phase)
 
 > Full plan: `docs/plans/active/phase11-mainnet-launch.md`

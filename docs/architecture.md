@@ -21,6 +21,14 @@ DefiPanda executes an automated DCA strategy using Chainlink CRE, with a web app
 4. Monitoring captures execution outcomes and alerts on failure conditions.
 5. Web app surfaces status and recent execution outcomes.
 
+## Route Architecture
+- `/` — Static landing page (server component, no wallet context). Explains vision, features, roadmap, and links to the app.
+- `/app` — DCA dashboard (client component, wrapped in `WalletProviderRoot`). Wallet connection, balances, strategy management.
+- `/api/*` — Backend API routes (DCA execution, orchestrator proxy, strategy CRUD).
+- `/auth/*` — Authentication routes (provider login, callback, session management).
+
+The root layout (`app/layout.tsx`) is minimal (HTML, body, fonts, CSS). The `/app` route has its own nested layout (`app/app/layout.tsx`) that mounts wallet providers. This keeps the landing page static/SSG-friendly for performance and SEO.
+
 ## Current Directory Map
 - `web/`: Next.js app and server-side API bridge for local CRE simulation.
 - `cre/`: CRE project files and `dca-workflow/` implementation.
