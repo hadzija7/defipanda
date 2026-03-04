@@ -122,7 +122,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{children}</h2>;
+  return <h2 className="mb-3 text-base font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{children}</h2>;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +244,7 @@ function WithdrawModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
         <div className="mb-5 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-xl font-semibold">
             {successInfo ? "Withdrawal Complete" : "Withdraw Funds"}
           </h3>
           <button
@@ -261,8 +261,8 @@ function WithdrawModal({
 
         {successInfo ? (
           <div className="flex flex-col gap-4">
-            <div className="rounded-lg bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
-              <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <div className="rounded-lg bg-amber-50 px-4 py-3 dark:bg-amber-950/30">
+              <div className="flex items-center gap-2 text-base font-medium text-amber-700 dark:text-amber-300">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -275,7 +275,7 @@ function WithdrawModal({
                 href={`${etherscanBase}/tx/${successInfo.txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-blue-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-blue-400 dark:hover:bg-zinc-800"
+                className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-base font-medium text-amber-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-amber-400 dark:hover:bg-zinc-800"
               >
                 View on Etherscan
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -289,7 +289,7 @@ function WithdrawModal({
             <button
               onClick={onClose}
               type="button"
-              className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="w-full rounded-lg border border-amber-500 bg-white py-2.5 text-base font-medium text-amber-600 hover:bg-amber-50"
             >
               Close
             </button>
@@ -298,7 +298,7 @@ function WithdrawModal({
           <div className="flex flex-col gap-4">
             {/* Asset selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 Asset
               </label>
               <div className="flex gap-2">
@@ -311,9 +311,9 @@ function WithdrawModal({
                       setAmount("");
                       setError(null);
                     }}
-                    className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-base font-medium transition-colors ${
                       asset === a
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                        ? "border-amber-500 bg-white text-amber-600 dark:border-amber-500 dark:bg-zinc-900 dark:text-amber-400"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
                     }`}
                   >
@@ -321,14 +321,14 @@ function WithdrawModal({
                   </button>
                 ))}
               </div>
-              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+              <span className="text-sm text-zinc-400 dark:text-zinc-500">
                 Available: {parseFloat(maxBalance).toFixed(asset === "USDC" ? 2 : 6)} {asset}
               </span>
             </div>
 
             {/* Amount input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 Amount
               </label>
               <div className="flex items-center gap-2">
@@ -342,13 +342,13 @@ function WithdrawModal({
                     setError(null);
                   }}
                   placeholder="0.00"
-                  className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+                  className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-amber-500"
                   disabled={sending}
                 />
                 <button
                   onClick={handleMax}
                   type="button"
-                  className="rounded-lg border border-zinc-300 px-3 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-zinc-300 px-3 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
                   MAX
                 </button>
@@ -357,7 +357,7 @@ function WithdrawModal({
 
             {/* Recipient */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 Receiver wallet
               </label>
               <input
@@ -368,13 +368,13 @@ function WithdrawModal({
                   setError(null);
                 }}
                 placeholder="0x..."
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-amber-500"
                 disabled={sending}
               />
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
                 {error}
               </div>
             )}
@@ -383,7 +383,7 @@ function WithdrawModal({
               onClick={handleWithdraw}
               disabled={sending || !amount || !recipient}
               type="button"
-              className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="w-full rounded-lg border border-amber-500 bg-white py-2.5 text-base font-medium text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sending ? "Sending..." : `Withdraw ${asset}`}
             </button>
@@ -411,7 +411,7 @@ function OnChainBalancesView({
     return (
       <div className="flex items-center gap-2 py-4">
         <StatusDot color="amber" />
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">Loading balances...</span>
+        <span className="text-sm text-zinc-500 dark:text-zinc-400">Loading balances...</span>
       </div>
     );
   }
@@ -422,7 +422,7 @@ function OnChainBalancesView({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
           {balances.chainName} balances
         </span>
         <div className="flex items-center gap-1">
@@ -430,7 +430,7 @@ function OnChainBalancesView({
             <button
               onClick={onWithdraw}
               type="button"
-              className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="rounded px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             >
               Withdraw
             </button>
@@ -438,7 +438,7 @@ function OnChainBalancesView({
           <button
             onClick={onRefresh}
             type="button"
-            className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="rounded px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
             Refresh
           </button>
@@ -447,26 +447,26 @@ function OnChainBalancesView({
 
       <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">USDC</span>
-          <span className={`text-sm font-medium ${usdcNum === 0 ? "text-red-500" : ""}`}>
+          <span className="text-base font-semibold">USDC</span>
+          <span className={`text-base font-medium ${usdcNum === 0 ? "text-red-500" : ""}`}>
             {usdcNum.toFixed(2)}
           </span>
         </div>
-        <div className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">DCA input token</div>
+        <div className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-500">DCA input token</div>
       </div>
 
       <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">WETH</span>
-          <span className="text-sm font-medium">
+          <span className="text-base font-semibold">WETH</span>
+          <span className="text-base font-medium">
             {wethNum < 0.0001 && wethNum > 0 ? "<0.0001" : wethNum.toFixed(6)}
           </span>
         </div>
-        <div className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">DCA output token</div>
+        <div className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-500">DCA output token</div>
       </div>
 
       {usdcNum === 0 && (
-        <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
           No USDC balance. Deposit USDC to start DCA executions.
         </div>
       )}
@@ -489,21 +489,21 @@ function PortfolioView({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cross-chain overview</span>
-        <button onClick={onRefresh} type="button" className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
+        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Cross-chain overview</span>
+        <button onClick={onRefresh} type="button" className="rounded px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
           Refresh
         </button>
       </div>
       {portfolio.map((token) => (
         <div key={token.symbol} className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">{token.symbol}</span>
-            <span className="text-sm font-medium">{token.totalBalance}</span>
+            <span className="text-base font-semibold">{token.symbol}</span>
+            <span className="text-base font-medium">{token.totalBalance}</span>
           </div>
           {token.chains.length > 0 && (
             <div className="mt-1.5 flex flex-col gap-0.5">
               {token.chains.map((chain) => (
-                <div key={chain.chainId} className="flex justify-between text-xs text-zinc-400 dark:text-zinc-500">
+                <div key={chain.chainId} className="flex justify-between text-sm text-zinc-400 dark:text-zinc-500">
                   <span>{chain.chainName}</span>
                   <span>{chain.formattedBalance}</span>
                 </div>
@@ -685,22 +685,22 @@ function DcaStrategyForm({
     <div className="flex flex-col gap-4">
       {/* Execution status banner */}
       {pos && (
-        <div className={`rounded-lg p-3 ${isActive && pos.sessionGranted ? "bg-emerald-50 dark:bg-emerald-950/30" : isActive && !pos.sessionGranted ? "bg-amber-50 dark:bg-amber-950/30" : "bg-zinc-50 dark:bg-zinc-800/50"}`}>
-          <div className="flex items-center gap-2 text-sm font-medium">
+        <div className={"rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"}>
+          <div className="flex items-center gap-2 text-base font-medium">
             <StatusDot color={isActive && pos.sessionGranted ? "green" : isActive ? "amber" : "amber"} />
             <span>{isActive && pos.sessionGranted ? "Active" : isActive ? "Session Required" : "Paused"}</span>
-            <span className="ml-auto text-xs font-normal text-zinc-500 dark:text-zinc-400">
+            <span className="ml-auto text-sm font-normal text-zinc-500 dark:text-zinc-400">
               {formatUsdc(pos.amountUsdc)} USDC {formatInterval(pos.intervalSeconds).toLowerCase()}
             </span>
           </div>
 
           {isActive && !pos.sessionGranted && (
-            <div className="mt-2 rounded bg-amber-100 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+            <div className="mt-2 rounded bg-amber-100 px-2.5 py-1.5 text-sm text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
               DCA is active but your wallet has not signed a session key yet. Click &quot;Grant Session&quot; below to authorize automated swaps.
             </div>
           )}
 
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
             <span>Total executions</span>
             <span className="font-medium text-zinc-700 dark:text-zinc-300">{pos.totalExecutions}</span>
 
@@ -716,7 +716,7 @@ function DcaStrategyForm({
                   href={`https://sepolia.etherscan.io/tx/${pos.lastExecutionTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  className="font-mono font-medium text-amber-600 hover:underline dark:text-amber-400"
                 >
                   {truncateHash(pos.lastExecutionTxHash)}
                 </a>
@@ -735,7 +735,7 @@ function DcaStrategyForm({
 
       {/* Amount input */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
           Amount per execution (USDC)
         </label>
         <div className="flex items-center gap-2">
@@ -745,22 +745,22 @@ function DcaStrategyForm({
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-32 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+            className="w-32 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-amber-500"
             disabled={saving}
           />
-          <span className="text-sm text-zinc-500">USDC</span>
+          <span className="text-base text-zinc-500">USDC</span>
         </div>
       </div>
 
       {/* Interval select */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
           Execution interval
         </label>
         <select
           value={intervalSeconds}
           onChange={(e) => setIntervalSeconds(Number(e.target.value))}
-          className="w-64 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+          className="w-64 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-amber-500"
           disabled={saving}
         >
           {DCA_INTERVALS.map((opt) => (
@@ -773,13 +773,13 @@ function DcaStrategyForm({
 
       {/* Summary */}
       <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="text-sm text-zinc-500 dark:text-zinc-400">
           <span className="font-medium">Token pair:</span> USDC → ETH (WETH)
         </div>
-        <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           <span className="font-medium">Chain:</span> Ethereum Sepolia (testnet)
         </div>
-        <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           <span className="font-medium">Max slippage:</span> 0.5%
         </div>
       </div>
@@ -789,7 +789,7 @@ function DcaStrategyForm({
         const amtNum = parseFloat(amount);
         if (!isNaN(balNum) && !isNaN(amtNum) && amtNum > balNum) {
           return (
-            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
               DCA amount ({amtNum.toFixed(2)} USDC) exceeds your balance ({balNum.toFixed(2)} USDC).
               Deposit more USDC before activating.
             </div>
@@ -799,7 +799,7 @@ function DcaStrategyForm({
       })()}
 
       {error && (
-        <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
           {error}
         </div>
       )}
@@ -812,7 +812,7 @@ function DcaStrategyForm({
               onClick={() => handleSubmit(true)}
               disabled={saving}
               type="button"
-              className="rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-amber-500 bg-white px-5 py-2.5 text-base font-medium text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Signing..." : "Grant Session"}
             </button>
@@ -820,7 +820,7 @@ function DcaStrategyForm({
               onClick={() => handleSubmit(false)}
               disabled={saving}
               type="button"
-              className="rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-300 px-5 py-2.5 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Pause DCA
             </button>
@@ -830,7 +830,7 @@ function DcaStrategyForm({
             onClick={() => handleSubmit(true)}
             disabled={saving}
             type="button"
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border border-amber-500 bg-white px-5 py-2.5 text-base font-medium text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : existingPosition ? "Update & Activate" : "Start DCA"}
           </button>
@@ -840,7 +840,7 @@ function DcaStrategyForm({
               onClick={() => handleSubmit(true)}
               disabled={saving}
               type="button"
-              className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-amber-500 bg-white px-5 py-2.5 text-base font-medium text-amber-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Saving..." : "Update Strategy"}
             </button>
@@ -848,7 +848,7 @@ function DcaStrategyForm({
               onClick={() => handleSubmit(false)}
               disabled={saving}
               type="button"
-              className="rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-300 px-5 py-2.5 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Pause DCA
             </button>
@@ -907,12 +907,12 @@ function ReownHome() {
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
-      <div className="mx-auto w-full max-w-lg">
+      <div className="mx-auto w-full max-w-xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
           </div>
@@ -923,8 +923,8 @@ function ReownHome() {
         {!isConnected && (
           <Card className="text-center">
             <div className="flex flex-col items-center gap-3 py-8">
-              <h2 className="text-lg font-semibold">Connect your wallet</h2>
-              <p className="max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+              <h2 className="text-xl font-semibold">Connect your wallet</h2>
+              <p className="max-w-xs text-base text-zinc-500 dark:text-zinc-400">
                 Sign in with your social account or connect a wallet to start
                 your automated DCA strategy.
               </p>
@@ -944,15 +944,15 @@ function ReownHome() {
               {rhinestoneLoading ? (
                 <div className="flex items-center gap-2">
                   <StatusDot color="amber" />
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Initializing Rhinestone account...</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Initializing Rhinestone account...</span>
                 </div>
               ) : rhinestoneError ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <StatusDot color="red" />
-                    <span className="text-xs text-zinc-500">Account error</span>
+                    <span className="text-sm text-zinc-500">Account error</span>
                   </div>
-                  <div className="rounded-lg bg-red-50 px-2 py-1 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+                  <div className="rounded-lg bg-red-50 px-2 py-1 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
                     {rhinestoneError}
                   </div>
                 </div>
@@ -960,16 +960,16 @@ function ReownHome() {
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <StatusDot color="green" />
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">ERC-7579 (same address on all chains)</span>
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">ERC-7579 (same address on all chains)</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Address</span>
-                    <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">Address</span>
+                    <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
                       {rhinestoneAddress}
                     </code>
                   </div>
                   {wagmiAccount.chainId && (
-                    <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                    <div className="text-sm text-zinc-400 dark:text-zinc-500">
                       Connected chain: {wagmiAccount.chainId}
                     </div>
                   )}
@@ -1010,16 +1010,16 @@ function ReownHome() {
             {rhinestoneAddress && (
               <Card>
                 <SectionTitle>Deposit Funds</SectionTitle>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-base text-zinc-600 dark:text-zinc-400">
                   Send USDC to your smart account address on Ethereum Sepolia to fund your DCA strategy.
                 </p>
                 <div className="mt-3 flex flex-col gap-1">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Send USDC to:</span>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Send USDC to:</span>
+                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
                     {rhinestoneAddress}
                   </code>
                 </div>
-                <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                   Get testnet USDC from the{" "}
                   <a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
                     Circle faucet
@@ -1036,7 +1036,7 @@ function ReownHome() {
                 {positionLoading ? (
                   <div className="flex items-center gap-2 py-4">
                     <StatusDot color="amber" />
-                    <span className="text-xs text-zinc-500">Loading strategy...</span>
+                    <span className="text-sm text-zinc-500">Loading strategy...</span>
                   </div>
                 ) : (
                   <DcaStrategyForm
@@ -1055,7 +1055,7 @@ function ReownHome() {
         )}
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+        <div className="mt-8 text-center text-sm text-zinc-400 dark:text-zinc-600">
           Ethereum Sepolia testnet only. No real funds.
         </div>
       </div>
@@ -1141,11 +1141,11 @@ function PrivyHome() {
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
-      <div className="mx-auto w-full max-w-lg">
+      <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
           </div>
@@ -1153,7 +1153,7 @@ function PrivyHome() {
             <button
               onClick={() => void logout()}
               type="button"
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Logout
             </button>
@@ -1161,7 +1161,7 @@ function PrivyHome() {
             <button
               onClick={() => login()}
               type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400"
             >
               Login with Privy
             </button>
@@ -1171,8 +1171,8 @@ function PrivyHome() {
         {!isConnected && (
           <Card className="text-center">
             <div className="flex flex-col items-center gap-3 py-8">
-              <h2 className="text-lg font-semibold">Connect your wallet</h2>
-              <p className="max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+              <h2 className="text-xl font-semibold">Connect your wallet</h2>
+              <p className="max-w-xs text-base text-zinc-500 dark:text-zinc-400">
                 Sign in with Privy to initialize your smart account and manage
                 automated DCA.
               </p>
@@ -1187,23 +1187,23 @@ function PrivyHome() {
               {rhinestoneLoading ? (
                 <div className="flex items-center gap-2">
                   <StatusDot color="amber" />
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">
                     Initializing Rhinestone account...
                   </span>
                 </div>
               ) : rhinestoneError ? (
-                <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
                   {rhinestoneError}
                 </div>
               ) : rhinestoneAddress ? (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <StatusDot color="green" />
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">
                       Privy signer + Rhinestone ERC-7579
                     </span>
                   </div>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
                     {rhinestoneAddress}
                   </code>
                 </div>
@@ -1243,7 +1243,7 @@ function PrivyHome() {
                 {positionLoading ? (
                   <div className="flex items-center gap-2 py-4">
                     <StatusDot color="amber" />
-                    <span className="text-xs text-zinc-500">Loading strategy...</span>
+                    <span className="text-sm text-zinc-500">Loading strategy...</span>
                   </div>
                 ) : (
                   <DcaStrategyForm
@@ -1261,7 +1261,7 @@ function PrivyHome() {
           </div>
         )}
 
-        <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+        <div className="mt-8 text-center text-sm text-zinc-400 dark:text-zinc-600">
           {activeNetwork.name} testnet only. No real funds.
         </div>
       </div>
@@ -1309,11 +1309,11 @@ function ZeroDevHome() {
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
-      <div className="mx-auto w-full max-w-lg">
+      <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
           </div>
@@ -1321,7 +1321,7 @@ function ZeroDevHome() {
             <button
               onClick={disconnect}
               type="button"
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Logout
             </button>
@@ -1330,7 +1330,7 @@ function ZeroDevHome() {
               onClick={login}
               disabled={isLoading}
               type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-60"
             >
               {isLoading ? "Connecting..." : "Login with ZeroDev"}
             </button>
@@ -1343,33 +1343,33 @@ function ZeroDevHome() {
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <StatusDot color="amber" />
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   Initializing ZeroDev account...
                 </span>
               </div>
             ) : error ? (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
                 {error}
               </div>
             ) : accountAddress ? (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <StatusDot color="green" />
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">
                     ZeroDev Kernel smart account
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">
                     Address
                   </span>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-xs font-mono dark:bg-zinc-800">
+                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
                     {accountAddress}
                   </code>
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+              <div className="rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                 Use &quot;Login with ZeroDev&quot; to connect your social smart account.
               </div>
             )}
@@ -1391,7 +1391,7 @@ function ZeroDevHome() {
               {positionLoading ? (
                 <div className="flex items-center gap-2 py-4">
                   <StatusDot color="amber" />
-                  <span className="text-xs text-zinc-500">Loading strategy...</span>
+                  <span className="text-sm text-zinc-500">Loading strategy...</span>
                 </div>
               ) : (
                 <DcaStrategyForm
@@ -1408,7 +1408,7 @@ function ZeroDevHome() {
           )}
         </div>
 
-        <div className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
+        <div className="mt-8 text-center text-sm text-zinc-400 dark:text-zinc-600">
           {activeNetwork.name} testnet only. No real funds.
         </div>
       </div>
@@ -1419,17 +1419,17 @@ function ZeroDevHome() {
 function ProviderNotEnabledView({ provider }: { provider: string }) {
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
-      <div className="mx-auto w-full max-w-lg">
+      <div className="mx-auto w-full max-w-xl">
         <div className="mb-6">
-          <h1 className="text-xl font-bold tracking-tight">DefiPanda</h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Automated DCA on Chainlink CRE
           </p>
         </div>
 
         <Card>
           <SectionTitle>Wallet Provider</SectionTitle>
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
             Active auth provider is <code>{provider}</code>. The DCA UI currently
             supports Reown + Rhinestone runtime only. Switch to{" "}
             <code>AUTH_PROVIDER=reown_appkit</code> to use the live DCA flow.

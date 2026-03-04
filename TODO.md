@@ -212,6 +212,7 @@
 - [x] Add CSS animations (fade-in-up, gradient shift, float)
 - [x] Replace "Integrated with Leading Protocols" section with architecture flow diagram (auth → Privy → wallet → Rhinestone → CRE → Uniswap)
 - [x] Update metadata for SEO (title, description)
+- [x] Re-theme DCA dashboard (`/app`) — buttons, inputs, banners, links from green/blue to amber-500
 - [ ] Deploy to Vercel (or add reverse proxy config for VPS)
 - [ ] Add custom domain
 - [ ] Add Open Graph / Twitter card meta images
