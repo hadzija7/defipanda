@@ -48,7 +48,13 @@ services:
       - "${WEB_PORT:-3000}:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-defipanda}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-defipanda}
+
+      # Individual Postgres vars (avoids URL-encoding pitfalls with special chars in passwords)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-defipanda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-defipanda}
 
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
       AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:?Set AUTH_SESSION_SECRET in .env}
@@ -105,15 +111,21 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_SERVER_JSON_FILE: /tmp/servers.json
+      POSTGRES_DB: ${POSTGRES_DB:-defipanda}
+      POSTGRES_USER: ${POSTGRES_USER:-defipanda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
-      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
-    entrypoint: >
-      /bin/sh -c "
-      echo \"postgres:5432:${POSTGRES_DB:-defipanda}:${POSTGRES_USER:-defipanda}:${POSTGRES_PASSWORD}\" > /tmp/pgpassfile &&
-      chmod 600 /tmp/pgpassfile &&
-      /entrypoint.sh
-      "
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        printf 'postgres:5432:%s:%s:%s\n' "$$POSTGRES_DB" "$$POSTGRES_USER" "$$POSTGRES_PASSWORD" > /tmp/pgpassfile
+        chmod 600 /tmp/pgpassfile
+        printf '{"Servers":{"1":{"Name":"DefiPanda","Group":"Servers","Host":"postgres","Port":5432,"MaintenanceDB":"%s","Username":"%s","SSLMode":"prefer","PassFile":"/tmp/pgpassfile"}}}' "$$POSTGRES_DB" "$$POSTGRES_USER" > /tmp/servers.json
+        exec /entrypoint.sh
 
   # ---------- CRE Automation (cron-like simulation loop) ----------
   cre-cron:

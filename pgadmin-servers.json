@@ -1,12 +1,13 @@
 {
+  "_comment": "Reference only — docker-compose generates servers.json at runtime from POSTGRES_DB/POSTGRES_USER env vars",
   "Servers": {
     "1": {
       "Name": "DefiPanda",
       "Group": "Servers",
       "Host": "postgres",
       "Port": 5432,
-      "MaintenanceDB": "defipanda",
-      "Username": "defipanda",
+      "MaintenanceDB": "(from POSTGRES_DB)",
+      "Username": "(from POSTGRES_USER)",
       "SSLMode": "prefer",
       "PassFile": "/tmp/pgpassfile"
     }

@@ -16,7 +16,7 @@ Last Updated: 2026-03-03
 | Security | B- | Google OIDC code+PKCE flow with signed session cookies; HMAC verification now uses constant-time comparison; users/sessions are persisted in PostgreSQL; `returnTo` open-redirect hardening includes tab/newline/carriage-return control-char filtering; modular provider architecture with typed adapter contracts; unified wallet auth capability for ZeroDev Social, WalletConnect, Reown AppKit, and Privy (client-side wallet management); AppKit and Privy create non-custodial embedded wallets with social login; Rhinestone API key proxied server-side via `/api/orchestrator` (never exposed to browser); session keys use spending-limit policies for scoped DCA automation; `/api/dca/execute` now requires bearer token authentication; CRE→backend requests use constant-time token comparison; Smart Sessions: user signs `experimental_signEnableSession` once, enable signature stored in DB, backend passes `enableData` for every execution (Rhinestone "enable mode") |
 | Observability | F | Monitoring architecture not finalized; auth UI now emits provider-specific ZeroDev login error details to browser console for faster triage |
 | Performance | F | No baseline measurements yet |
-| CI/CD | D | Docker Compose self-hosting scaffolded; no CI pipeline yet |
+| CI/CD | D | Docker Compose self-hosting scaffolded; CRE entrypoint validates `CRE_CRON_INTERVAL_SECONDS` to prevent crash-on-bad-input; no CI pipeline yet |
 | Documentation | C | Initial scaffold established |
 
 ## Known Gaps

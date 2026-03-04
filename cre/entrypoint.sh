@@ -2,6 +2,10 @@
 set -euo pipefail
 
 INTERVAL="${CRE_CRON_INTERVAL_SECONDS:-300}"
+if ! [[ "$INTERVAL" =~ ^[0-9]+$ ]] || [ "$INTERVAL" -lt 1 ]; then
+  echo "WARNING: CRE_CRON_INTERVAL_SECONDS='$INTERVAL' is not a valid positive integer. Falling back to 300."
+  INTERVAL=300
+fi
 TARGET="${CRE_TARGET:-staging-settings}"
 WORKFLOW="${CRE_WORKFLOW_NAME:-dca-workflow}"
 BROADCAST="${CRE_BROADCAST:-false}"

@@ -179,11 +179,13 @@
 - [x] Create `web/Dockerfile` (Next.js standalone build with multi-stage)
 - [x] Create `cre/Dockerfile` (Debian + CRE CLI + Bun for workflow deps)
 - [x] Create `cre/entrypoint.sh` (loop-based CRE simulation with backend health check)
+- [x] Add numeric validation for `CRE_CRON_INTERVAL_SECONDS` in entrypoint (prevents container crash on bad input)
 - [x] Create `docker-compose.yml` (postgres + web + cre-cron)
 - [x] Create `.env.docker` template with all required env vars
 - [x] Set Next.js `output: "standalone"` in `web/next.config.ts`
 - [x] Add root `.gitignore` and `.dockerignore` files
 - [x] Update architecture docs with deployment section
+- [x] Fix pgAdmin servers.json — generate at runtime from env vars (was hardcoded)
 - [ ] Test full `docker compose up --build` flow
 - [ ] Verify CRE CLI auth works headlessly (CRE_API_KEY)
 - [ ] Verify end-to-end: cre-cron → POST /api/dca/execute → Rhinestone swap
