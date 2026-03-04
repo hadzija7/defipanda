@@ -148,7 +148,7 @@ services:
 
       # Secrets consumed by the DCA workflow (must match secrets.yaml)
       BACKEND_AUTH_TOKEN_ALL: ${CRE_BACKEND_AUTH_TOKEN:-changeme-local-dev-token}
-      BACKEND_URL_ALL: http://web:3000
+      BACKEND_URL_ALL: ${BACKEND_URL_ALL:-http://web:3000}
 
       # Cron configuration
       CRE_CRON_INTERVAL_SECONDS: ${CRE_CRON_INTERVAL_SECONDS:-300}
