@@ -1,0 +1,21 @@
+###############################################################################
+# DefiPanda — production overrides
+#
+# Locks down ports so only Caddy (reverse proxy) can reach the web service.
+# Postgres and pgAdmin are not exposed externally at all.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+###############################################################################
+
+services:
+  postgres:
+    ports: !override []
+
+  web:
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  pgadmin:
+    ports:
+      - "127.0.0.1:5050:80"

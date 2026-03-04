@@ -85,6 +85,38 @@ cre workflow simulate dca-workflow --target=staging-settings
 
 You'll need a local Postgres instance. Set `DATABASE_URL` in `web/.env.local` accordingly.
 
+## Production Deployment (GCE + Caddy)
+
+For deploying to a Google Compute Engine VM (or any VPS) with HTTPS:
+
+```bash
+# 1. Clone the repo on the VM
+git clone <repo-url> && cd defipanda
+
+# 2. Copy env template and fill in real values
+cp .env.docker .env
+# Set APP_BASE_URL=https://yourdomain.com in .env
+
+# 3. Start with production overrides (locks down ports)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+The prod override (`docker-compose.prod.yml`) binds the web and pgAdmin ports to `127.0.0.1` only, and removes the Postgres port entirely. A reverse proxy like [Caddy](https://caddyserver.com) handles HTTPS in front:
+
+```
+# /etc/caddy/Caddyfile
+yourdomain.com, www.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+To access pgAdmin remotely, use an SSH tunnel:
+
+```bash
+gcloud compute ssh <vm-name> --zone=<zone> -- -L 5050:localhost:5050
+# Then open http://localhost:5050
+```
+
 ## Project Structure
 
 ```
@@ -94,8 +126,9 @@ defipanda/
 │   └── dca-workflow/ # TypeScript DCA workflow
 ├── docs/             # Architecture docs
 ├── specs/            # System specs
-├── docker-compose.yml
-├── .env.docker       # Env template for Docker
+├── docker-compose.yml       # Local dev (all ports open)
+├── docker-compose.prod.yml  # Production overrides (locked-down ports)
+├── .env.docker              # Env template for Docker
 └── README.md
 ```
 
