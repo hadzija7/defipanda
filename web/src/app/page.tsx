@@ -40,9 +40,6 @@ function Navbar() {
           <a href="#features" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
             Features
           </a>
-          <a href="#how-it-works" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
-            How it Works
-          </a>
           <a href="#roadmap" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
             Roadmap
           </a>
@@ -277,69 +274,6 @@ function Features() {
   );
 }
 
-// ── How It Works Section ─────────────────────────────────────────────────
-
-function HowItWorks() {
-  const steps = [
-    {
-      number: "01",
-      title: "Connect & Create",
-      description:
-        "Sign in with your email or social account. A smart account is created automatically — no seed phrases, no extensions.",
-    },
-    {
-      number: "02",
-      title: "Configure Strategy",
-      description:
-        "Choose your DCA amount in USDC, set execution frequency, and grant a scoped session key with one signature.",
-    },
-    {
-      number: "03",
-      title: "Sit Back & Accumulate",
-      description:
-        "Chainlink reads the live ETH price, verifies it across multiple nodes, and triggers your swap on Uniswap V3.",
-    },
-    {
-      number: "04",
-      title: "Monitor & Withdraw",
-      description:
-        "Track execution history, view your growing position, and withdraw to any wallet at any time.",
-    },
-  ];
-
-  return (
-    <section id="how-it-works" className="bg-white py-24 sm:py-32">
-      <div className="mx-auto max-w-3xl px-6">
-        <h2 className="animate-fade-in-up text-center text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
-          How it works
-        </h2>
-        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-md text-center text-base text-zinc-500">
-          From sign-in to automated swaps in under two minutes.
-        </p>
-
-        <div className="mt-14 flex flex-col gap-8">
-          {steps.map((step, i) => (
-            <div
-              key={step.number}
-              className={`animate-fade-in-up delay-${(i + 1) * 100} flex gap-5`}
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-base font-extrabold text-amber-600">
-                {step.number}
-              </div>
-              <div className="pt-0.5">
-                <h3 className="text-lg font-bold text-zinc-900">{step.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-500">
-                  {step.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ── Roadmap Section ──────────────────────────────────────────────────────
 
 function Roadmap() {
@@ -555,7 +489,6 @@ export default function LandingPage() {
       <Hero />
       <ArchitectureDiagram />
       <Features />
-      <HowItWorks />
       <Roadmap />
       <CallToAction />
       <Footer />
