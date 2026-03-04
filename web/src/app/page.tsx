@@ -37,9 +37,6 @@ function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#features" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
-            Features
-          </a>
           <a href="#roadmap" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
             Roadmap
           </a>
@@ -206,68 +203,6 @@ function ArchitectureDiagram() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Features Section ─────────────────────────────────────────────────────
-
-function Features() {
-  const features = [
-    {
-      title: "Fully Automated",
-      description:
-        "Chainlink's decentralized oracle network triggers executions on schedule. No manual intervention.",
-    },
-    {
-      title: "Non-Custodial",
-      description:
-        "Your funds stay in your smart account. Session keys grant scoped, time-limited permissions you revoke anytime.",
-    },
-    {
-      title: "Gasless Swaps",
-      description:
-        "Sponsored transactions mean your full DCA amount goes into the swap, not fees.",
-    },
-    {
-      title: "Smart Accounts",
-      description:
-        "ERC-7579 account with one address across all chains. Social login — no seed phrases.",
-    },
-    {
-      title: "Oracle-Verified Pricing",
-      description:
-        "Every execution uses Chainlink's consensus-verified ETH/USD feed. Multiple nodes agree before your swap triggers.",
-    },
-    {
-      title: "Flexible Scheduling",
-      description:
-        "From every 30 seconds to once a day. Adjust amount and frequency at any time.",
-    },
-  ];
-
-  return (
-    <section id="features" className="bg-[#faf9f6] py-24 sm:py-32">
-      <div className="mx-auto max-w-6xl px-6">
-        <h2 className="animate-fade-in-up text-center text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
-          DCA, reinvented
-        </h2>
-        <p className="animate-fade-in-up delay-100 mx-auto mt-3 max-w-lg text-center text-base text-zinc-500">
-          Everything you need for a hands-free dollar-cost averaging strategy.
-        </p>
-
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => (
-            <div
-              key={f.title}
-              className={`animate-fade-in-up delay-${(i + 1) * 100} rounded-2xl border border-zinc-200/80 bg-white p-6 transition-all hover:border-amber-300/60 hover:shadow-lg hover:shadow-amber-100/40`}
-            >
-              <h3 className="mb-2 text-lg font-bold text-zinc-900">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-zinc-500">{f.description}</p>
-            </div>
-          ))}
         </div>
       </div>
     </section>
@@ -463,7 +398,6 @@ function Footer() {
         </div>
 
         <div className="flex items-center gap-6 text-sm text-zinc-400">
-          <a href="#features" className="transition-colors hover:text-zinc-700">Features</a>
           <a href="#roadmap" className="transition-colors hover:text-zinc-700">Roadmap</a>
           <Link href="/app" className="transition-colors hover:text-zinc-700">App</Link>
           <a
@@ -488,7 +422,6 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <ArchitectureDiagram />
-      <Features />
       <Roadmap />
       <CallToAction />
       <Footer />
