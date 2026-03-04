@@ -392,10 +392,8 @@ function Footer() {
         </div>
 
         <div className="flex items-center gap-6 text-sm text-zinc-400">
-          <a href="#roadmap" className="transition-colors hover:text-zinc-700">Roadmap</a>
-          <Link href="/app" className="transition-colors hover:text-zinc-700">App</Link>
           <a
-            href="https://github.com"
+            href="https://github.com/hadzija7/defipanda"
             target="_blank"
             rel="noopener noreferrer"
             className="transition-colors hover:text-zinc-700"
