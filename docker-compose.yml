@@ -91,6 +91,30 @@ services:
 
       DCA_ACTIVE_STRATEGIES: ${DCA_ACTIVE_STRATEGIES:-[]}
 
+  # ---------- pgAdmin (Postgres Web UI) ----------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@defipanda.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    entrypoint: >
+      /bin/sh -c "
+      echo \"postgres:5432:${POSTGRES_DB:-defipanda}:${POSTGRES_USER:-defipanda}:${POSTGRES_PASSWORD}\" > /tmp/pgpassfile &&
+      chmod 600 /tmp/pgpassfile &&
+      /entrypoint.sh
+      "
+
   # ---------- CRE Automation (cron-like simulation loop) ----------
   cre-cron:
     build:
@@ -121,3 +145,4 @@ services:
 
 volumes:
   pg_data:
+  pgadmin_data:
