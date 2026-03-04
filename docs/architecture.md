@@ -182,18 +182,48 @@ After Option B is proven, explore moving signing into CRE itself:
 - Submit signed transactions directly via HTTP to an RPC endpoint
 - Eliminates backend from the execution hot path entirely
 
+## Self-Hosted Deployment (Docker Compose)
+
+The full stack can run on a single machine via `docker compose up --build`:
+
+| Service | Image | Purpose |
+|---------|-------|---------|
+| `postgres` | `postgres:16-alpine` | Persistent storage for auth, sessions, DCA positions |
+| `web` | `web/Dockerfile` (Next.js standalone) | Frontend + all API routes (backend) |
+| `cre-cron` | `cre/Dockerfile` (Debian + CRE CLI + Bun) | Runs `cre workflow simulate` in a loop every N seconds |
+
+### How CRE Automation Works in Docker
+- CRE cannot be self-hosted as a DON; the Docker setup uses **`cre workflow simulate`** in non-interactive mode
+- The simulation compiles the TypeScript workflow to WASM and executes against real testnets (single-node, no consensus)
+- `entrypoint.sh` runs a loop: simulate → sleep `CRE_CRON_INTERVAL_SECONDS` → repeat
+- The workflow POSTs to `http://web:3000/api/dca/execute` (Docker internal DNS) with the consensus-simulated price
+- Auth token flows: CRE container's `BACKEND_AUTH_TOKEN_ALL` must match web container's `CRE_BACKEND_AUTH_TOKEN`
+
+### Configuration
+- Copy `.env.docker` to `.env` and fill in real values
+- `CRE_CRON_INTERVAL_SECONDS` controls automation frequency (default: 300 = 5 minutes)
+- `CRE_BROADCAST=true` enables real onchain transactions (default: dry-run)
+- CRE CLI requires authentication: set `CRE_API_KEY` or run `cre login` inside the container
+
+### Limitations vs Production CRE
+- No BFT consensus (single-node simulation)
+- WASM recompilation on every invocation (adds a few seconds overhead)
+- No persistent workflow state between runs
+
 ## Tech Stack (Current)
 - Frontend: Next.js + Reown AppKit + Rhinestone SDK
 - Smart Accounts: Rhinestone ERC-7579 (wrapping Reown signer)
 - Automation runtime: Chainlink CRE
 - Auth: Reown AppKit (social login, embedded wallets)
+- Database: PostgreSQL (raw `pg`, auto-migrating schema)
+- Deployment: Docker Compose (postgres + web + cre-cron)
 - Monitoring: TBD (tooling not chosen yet)
 
 ## Key Unknowns To Resolve Next
 1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
 2. Uniswap V3 USDC/WETH pool liquidity on Ethereum Sepolia — needs testnet verification.
 3. Monitoring stack selection and alert channels.
-4. Deployment model (environments, secrets handling, promotion flow).
+4. CRE API key authentication for headless Docker container use.
 5. Production job queue for sequential nonce management across concurrent users.
 
 ## Initial Conventions

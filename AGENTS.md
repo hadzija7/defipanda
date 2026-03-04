@@ -30,11 +30,15 @@
 4. Implement in small steps with verification.
 5. Update docs/spec statuses and quality grades before closing work.
 
-## Commands (to refine)
+## Commands
 - Web install: `cd web && pnpm install`
 - Web dev: `cd web && pnpm dev`
 - CRE workflow run: `cd cre/dca-workflow && npm run start`
+- **Docker (full stack):** `cp .env.docker .env && docker compose up --build`
+- **Docker logs:** `docker compose logs -f`
+- **Docker teardown:** `docker compose down -v`
 
 ## Environment Notes
 - `cre/.env` contains real secrets (private keys, tokens) and is gitignored. See `cre/.env.example` for the required variables.
 - `cre/secrets.yaml` is a structural mapping (secret name → env var name) with no actual values. It is safe to commit and required by the CRE CLI.
+- `.env.docker` is the template for Docker Compose. Copy to `.env` and fill in real values. The `.env` file is gitignored.

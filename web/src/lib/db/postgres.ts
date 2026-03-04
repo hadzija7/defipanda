@@ -1,27 +1,41 @@
 import { Pool } from "pg";
-import type { QueryResultRow } from "pg";
+import type { PoolConfig, QueryResultRow } from "pg";
 
 let pool: Pool | null = null;
 let initPromise: Promise<void> | null = null;
 
-function requireDatabaseUrl(): string {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("Missing required environment variable: DATABASE_URL");
-  }
-  return databaseUrl;
-}
+function buildPoolConfig(): PoolConfig {
+  const ssl = (process.env.DATABASE_SSL === "true" || process.env.PGSSLMODE === "require")
+    ? { rejectUnauthorized: false }
+    : undefined;
 
-function shouldUseSsl(): boolean {
-  return process.env.DATABASE_SSL === "true" || process.env.PGSSLMODE === "require";
+  if (process.env.DATABASE_URL) {
+    return { connectionString: process.env.DATABASE_URL, ssl };
+  }
+
+  const host = process.env.POSTGRES_HOST;
+  const user = process.env.POSTGRES_USER;
+  const password = process.env.POSTGRES_PASSWORD;
+  const database = process.env.POSTGRES_DB;
+  if (host && user && password && database) {
+    return {
+      host,
+      port: Number(process.env.POSTGRES_PORT || "5432"),
+      user,
+      password,
+      database,
+      ssl,
+    };
+  }
+
+  throw new Error(
+    "Database not configured. Set DATABASE_URL or the individual POSTGRES_HOST/USER/PASSWORD/DB vars.",
+  );
 }
 
 function getPool(): Pool {
   if (!pool) {
-    pool = new Pool({
-      connectionString: requireDatabaseUrl(),
-      ssl: shouldUseSsl() ? { rejectUnauthorized: false } : undefined,
-    });
+    pool = new Pool(buildPoolConfig());
     pool.on("error", (error) => {
       console.error("Unexpected error on idle PostgreSQL client", error);
     });

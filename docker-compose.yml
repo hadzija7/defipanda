@@ -1,0 +1,160 @@
+###############################################################################
+# DefiPanda — self-hosted single-machine deployment
+#
+# Usage:
+#   cp .env.docker .env            # fill in real values
+#   docker compose up --build -d
+#   docker compose logs -f
+###############################################################################
+
+services:
+  # ---------- PostgreSQL ----------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-defipanda}
+      POSTGRES_USER: ${POSTGRES_USER:-defipanda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-defipanda}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------- Web (Next.js — frontend + backend API) ----------
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:-}
+        NEXT_PUBLIC_PRIVY_CHAIN_ID: ${NEXT_PUBLIC_PRIVY_CHAIN_ID:-11155111}
+        NEXT_PUBLIC_PRIVY_RPC_URL: ${NEXT_PUBLIC_PRIVY_RPC_URL:-}
+        NEXT_PUBLIC_ZERODEV_PROJECT_ID: ${NEXT_PUBLIC_ZERODEV_PROJECT_ID:-}
+        NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER: ${NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER:-google}
+        NEXT_PUBLIC_ZERODEV_RPC_URL: ${NEXT_PUBLIC_ZERODEV_RPC_URL:-}
+        NEXT_PUBLIC_REOWN_PROJECT_ID: ${NEXT_PUBLIC_REOWN_PROJECT_ID:-}
+        NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS: ${NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS:-}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+
+      # Individual Postgres vars (avoids URL-encoding pitfalls with special chars in passwords)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-defipanda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-defipanda}
+
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:?Set AUTH_SESSION_SECRET in .env}
+
+      # Auth
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-privy}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+
+      # Smart accounts
+      SMART_ACCOUNT_PROVIDER: ${SMART_ACCOUNT_PROVIDER:-privy}
+      DCA_EXECUTION_PROVIDER: ${DCA_EXECUTION_PROVIDER:-rhinestone}
+      ENABLE_SMART_ACCOUNT_PROVISIONING: ${ENABLE_SMART_ACCOUNT_PROVISIONING:-true}
+
+      # Privy
+      NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:-}
+      NEXT_PUBLIC_PRIVY_CHAIN_ID: ${NEXT_PUBLIC_PRIVY_CHAIN_ID:-11155111}
+      NEXT_PUBLIC_PRIVY_RPC_URL: ${NEXT_PUBLIC_PRIVY_RPC_URL:-}
+
+      # ZeroDev
+      NEXT_PUBLIC_ZERODEV_PROJECT_ID: ${NEXT_PUBLIC_ZERODEV_PROJECT_ID:-}
+      NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER: ${NEXT_PUBLIC_ZERODEV_SOCIAL_PROVIDER:-google}
+      ZERODEV_RPC_URL: ${ZERODEV_RPC_URL:-}
+      NEXT_PUBLIC_ZERODEV_RPC_URL: ${NEXT_PUBLIC_ZERODEV_RPC_URL:-}
+      SMART_ACCOUNT_RPC_URL: ${SMART_ACCOUNT_RPC_URL:-}
+      SMART_ACCOUNT_CHAIN_ID: ${SMART_ACCOUNT_CHAIN_ID:-11155111}
+
+      # ReOwn
+      NEXT_PUBLIC_REOWN_PROJECT_ID: ${NEXT_PUBLIC_REOWN_PROJECT_ID:-}
+
+      # Rhinestone
+      RHINESTONE_API_KEY: ${RHINESTONE_API_KEY:-}
+
+      # CRE execution pipeline
+      CRE_BACKEND_AUTH_TOKEN: ${CRE_BACKEND_AUTH_TOKEN:-changeme-local-dev-token}
+
+      # Backend signer
+      NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS: ${NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS:-}
+      SMART_ACCOUNT_OWNER_PRIVATE_KEY: ${SMART_ACCOUNT_OWNER_PRIVATE_KEY:-}
+
+      DCA_ACTIVE_STRATEGIES: ${DCA_ACTIVE_STRATEGIES:-[]}
+
+  # ---------- pgAdmin (Postgres Web UI) ----------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@defipanda.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_SERVER_JSON_FILE: /tmp/servers.json
+      POSTGRES_DB: ${POSTGRES_DB:-defipanda}
+      POSTGRES_USER: ${POSTGRES_USER:-defipanda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        printf 'postgres:5432:%s:%s:%s\n' "$$POSTGRES_DB" "$$POSTGRES_USER" "$$POSTGRES_PASSWORD" > /tmp/pgpassfile
+        chmod 600 /tmp/pgpassfile
+        printf '{"Servers":{"1":{"Name":"DefiPanda","Group":"Servers","Host":"postgres","Port":5432,"MaintenanceDB":"%s","Username":"%s","SSLMode":"prefer","PassFile":"/tmp/pgpassfile"}}}' "$$POSTGRES_DB" "$$POSTGRES_USER" > /tmp/servers.json
+        exec /entrypoint.sh
+
+  # ---------- CRE Automation (cron-like simulation loop) ----------
+  cre-cron:
+    build:
+      context: ./cre
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+    volumes:
+      # Mount host CRE auth token to a staging path (run `cre login` on host first)
+      # Entrypoint copies it into /root/.cre/cre.yaml so the CLI can refresh it freely
+      - ${HOME}/.cre/cre.yaml:/tmp/host-cre-auth.yaml:ro
+    environment:
+      # CRE CLI auth & runtime
+      CRE_ETH_PRIVATE_KEY: ${CRE_ETH_PRIVATE_KEY:?Set CRE_ETH_PRIVATE_KEY in .env}
+      CRE_TARGET: ${CRE_TARGET:-staging-settings}
+      CRE_API_KEY: ${CRE_API_KEY:-}
+
+      # Secrets consumed by the DCA workflow (must match secrets.yaml)
+      BACKEND_AUTH_TOKEN_ALL: ${CRE_BACKEND_AUTH_TOKEN:-changeme-local-dev-token}
+      BACKEND_URL_ALL: http://web:3000
+
+      # Cron configuration
+      CRE_CRON_INTERVAL_SECONDS: ${CRE_CRON_INTERVAL_SECONDS:-300}
+      CRE_WORKFLOW_NAME: ${CRE_WORKFLOW_NAME:-dca-workflow}
+      CRE_BROADCAST: ${CRE_BROADCAST:-false}
+
+volumes:
+  pg_data:
+  pgadmin_data:
