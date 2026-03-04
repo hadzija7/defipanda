@@ -36,12 +36,6 @@ function Navbar() {
           </span>
         </Link>
 
-        <div className="hidden items-center gap-8 md:flex">
-          <a href="#roadmap" className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900">
-            Roadmap
-          </a>
-        </div>
-
         <Link
           href="/app"
           className="rounded-full bg-amber-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-amber-400 hover:shadow-md"
