@@ -19,3 +19,7 @@ services:
   pgadmin:
     ports: !override
       - "127.0.0.1:5050:80"
+
+  cre-cron:
+    environment:
+      BACKEND_URL_ALL: https://defipanda.xyz
