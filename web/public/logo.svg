@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Left ear -->
+  <circle cx="148" cy="128" r="88" fill="#1a1a2e"/>
+  <!-- Right ear -->
+  <circle cx="364" cy="128" r="88" fill="#1a1a2e"/>
+
+  <!-- Head -->
+  <ellipse cx="256" cy="288" rx="200" ry="192" fill="#ffffff" stroke="#1a1a2e" stroke-width="6"/>
+
+  <!-- Left eye patch -->
+  <ellipse cx="186" cy="260" rx="62" ry="56" transform="rotate(-12 186 260)" fill="#1a1a2e"/>
+  <!-- Right eye patch -->
+  <ellipse cx="326" cy="260" rx="62" ry="56" transform="rotate(12 326 260)" fill="#1a1a2e"/>
+
+  <!-- Left eye -->
+  <ellipse cx="190" cy="256" rx="20" ry="22" fill="#ffffff"/>
+  <circle cx="196" cy="252" r="10" fill="#1a1a2e"/>
+  <circle cx="200" cy="248" r="4" fill="#ffffff"/>
+
+  <!-- Right eye -->
+  <ellipse cx="322" cy="256" rx="20" ry="22" fill="#ffffff"/>
+  <circle cx="316" cy="252" r="10" fill="#1a1a2e"/>
+  <circle cx="312" cy="248" r="4" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="256" cy="332" rx="22" ry="16" fill="#1a1a2e"/>
+
+  <!-- Mouth -->
+  <path d="M256 348 Q240 368 232 362" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M256 348 Q272 368 280 362" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Inner ear highlights -->
+  <circle cx="148" cy="122" r="44" fill="#2d2d4e"/>
+  <circle cx="364" cy="122" r="44" fill="#2d2d4e"/>
+</svg>

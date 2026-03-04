@@ -4,7 +4,7 @@ import { WalletProviderRoot } from "@/context/wallet-provider-root";
 import { normalizeRuntimeAuthProvider } from "@/lib/runtime/provider-selection";
 
 export const metadata: Metadata = {
-  title: "DefiPanda — Dashboard",
+  title: "DefiPanda",
   description: "Manage your automated DCA strategy",
 };
 

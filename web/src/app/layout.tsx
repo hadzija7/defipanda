@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DefiPanda — Automated DCA on Chainlink",
+  title: "DefiPanda",
   description:
     "Set it once, DCA forever. Automated dollar-cost averaging powered by Chainlink's decentralized oracle network, Rhinestone smart accounts, and Uniswap V3.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

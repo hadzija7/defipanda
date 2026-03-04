@@ -31,6 +31,7 @@ function Navbar() {
     <nav className="fixed top-0 z-50 w-full bg-[#faf9f6]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
           <span className="text-xl font-extrabold tracking-tight text-zinc-900">
             DefiPanda
           </span>

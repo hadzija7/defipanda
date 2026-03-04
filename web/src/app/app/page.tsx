@@ -919,7 +919,10 @@ function ReownHome() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <img src="/logo.svg" alt="" className="h-7 w-7" />
+              DefiPanda
+            </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
@@ -1152,7 +1155,10 @@ function PrivyHome() {
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <img src="/logo.svg" alt="" className="h-7 w-7" />
+              DefiPanda
+            </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
@@ -1320,7 +1326,10 @@ function ZeroDevHome() {
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <img src="/logo.svg" alt="" className="h-7 w-7" />
+              DefiPanda
+            </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Automated DCA on Chainlink CRE
             </p>
@@ -1429,7 +1438,10 @@ function ProviderNotEnabledView({ provider }: { provider: string }) {
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">DefiPanda</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <img src="/logo.svg" alt="" className="h-7 w-7" />
+            DefiPanda
+          </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Automated DCA on Chainlink CRE
           </p>
