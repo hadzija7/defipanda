@@ -168,6 +168,15 @@ async function initializeSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_dca_positions_active
       ON dca_positions (active) WHERE active = true;
     `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_onboarding (
+        smart_account_address TEXT NOT NULL,
+        smart_account_provider TEXT NOT NULL DEFAULT 'reown_appkit',
+        completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (smart_account_address, smart_account_provider)
+      );
+    `);
   } finally {
     client.release();
   }

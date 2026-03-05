@@ -217,6 +217,19 @@
 - [ ] Add custom domain
 - [ ] Add Open Graph / Twitter card meta images
 
+## Phase 10.6 - User Onboarding Guide
+- [x] Add `user_onboarding` DB table (keyed by smart_account_address + provider)
+- [x] Create onboarding store module (`web/src/lib/onboarding/store.ts`)
+- [x] Add API endpoints: `GET /api/onboarding/status`, `POST /api/onboarding/complete`
+- [x] Create `OnboardingGuide` component with 4-step popup flow:
+  - Step 1: DCA strategy explanation
+  - Step 2: Smart account explanation + copy address to clipboard
+  - Step 3: Balances + faucet link (opens Circle faucet, auto-copies address)
+  - Step 4: Create sample DCA position (0.25 USDC / 5 min, inactive)
+- [x] Create `useOnboardingStatus` hook (localStorage fast-path + server-side DB persistence)
+- [x] Integrate onboarding into all three Home views (ReownHome, PrivyHome, ZeroDevHome)
+- [ ] Add onboarding reset mechanism (admin/debug)
+
 ## Phase 11 - Mainnet Launch (Next Phase)
 
 > Full plan: `docs/plans/active/phase11-mainnet-launch.md`

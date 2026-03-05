@@ -236,6 +236,27 @@ See `docs/plans/active/phase11-mainnet-launch.md` for the full plan covering:
 
 Key design constraint: **no custom smart contracts for V1** — all execution through existing Uniswap V3 router and Rhinestone session keys.
 
+## User Onboarding (Phase 10.6)
+
+New users see a 4-step guided onboarding popup on first login (until completed):
+
+1. **DCA Explanation** — what Dollar-Cost Averaging is and how DefiPanda automates it
+2. **Smart Account** — explains their smart account, copies address to clipboard
+3. **Fund Account** — points to Circle faucet (Ethereum Sepolia), auto-copies address
+4. **Create Strategy** — creates a sample DCA position (0.25 USDC / 5 min, inactive)
+
+### Persistence
+- `user_onboarding` table keyed by `(smart_account_address, smart_account_provider)`
+- Client-side localStorage for fast repeat-visit check (avoids API call on every page load)
+- Server-side DB for cross-device persistence
+- API: `GET /api/onboarding/status?address=...&provider=...` and `POST /api/onboarding/complete`
+
+### Integration
+- `useOnboardingStatus` hook checks onboarding state after smart account is ready
+- `OnboardingGuide` component renders as a modal overlay in all three Home views
+- "Skip onboarding" option available at every step
+- Completing or skipping marks onboarding done in both localStorage and DB
+
 ## Key Unknowns To Resolve Next
 1. Does viem crypto (noble-curves secp256k1) work in CRE's QuickJS WASM runtime? (Phase 10)
 2. Rhinestone mainnet `sponsored: true` billing model — does it exist? (Phase 11.1)

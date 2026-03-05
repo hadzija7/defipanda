@@ -24,6 +24,10 @@ import {
 import { activeNetwork } from "@/lib/constants/networks";
 import { useWalletRuntime } from "@/context/wallet-provider-root";
 import { usePostHogIdentify } from "@/hooks/usePostHogIdentify";
+import {
+  OnboardingGuide,
+  useOnboardingStatus,
+} from "@/components/OnboardingGuide";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -736,7 +740,12 @@ function DcaStrategyForm({
 
       onSaved(body.strategy);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      const msg = err instanceof Error ? err.message : "Network error";
+      const isUserRejection =
+        /user rejected|user denied|user cancelled|rejected the request/i.test(msg);
+      if (!isUserRejection) {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -931,6 +940,7 @@ function ReownHome() {
   const { authProvider } = useWalletRuntime();
   const appKitAccount = useAppKitAccount();
   const wagmiAccount = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const {
     rhinestoneAccount,
     accountAddress: rhinestoneAddress,
@@ -944,6 +954,11 @@ function ReownHome() {
 
   const isConnected = appKitAccount.isConnected && !!appKitAccount.address;
   usePostHogIdentify(appKitAccount.address, { auth_provider: "reown" });
+
+  const { showOnboarding, completeOnboarding } = useOnboardingStatus(
+    rhinestoneAddress ?? undefined,
+    authProvider,
+  );
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -971,8 +986,72 @@ function ReownHome() {
     }
   }, [rhinestoneAddress, loadPosition]);
 
+  const handleActivateOnboardingStrategy = useCallback(async () => {
+    if (!rhinestoneAccount || !rhinestoneAddress || !appKitAccount.address) {
+      throw new Error("Account not ready");
+    }
+
+    if (wagmiAccount.chainId !== activeNetwork.chainId) {
+      try {
+        await switchChainAsync({ chainId: activeNetwork.chainId });
+      } catch {
+        // Embedded wallets may not support chain switching
+      }
+    }
+
+    const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+    if (!backendSignerAddress) throw new Error("Backend signer address not configured");
+
+    const session = buildDcaSession({ backendSigner: backendSignerAddress as Address });
+    const sessionDetails = await rhinestoneAccount.experimental_getSessionDetails([session]);
+    const enableSig: Hex = await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
+
+    const txResult = await rhinestoneAccount.sendTransaction({
+      chain: activeNetwork.chain,
+      calls: [experimental_enableSession(session, enableSig, sessionDetails.hashesAndChainIds, 0)],
+      sponsored: true,
+    });
+    await rhinestoneAccount.waitForExecution(txResult);
+
+    const sessionHashesAndChainIds = JSON.stringify(
+      sessionDetails.hashesAndChainIds.map(
+        (h: { chainId: bigint; sessionDigest: Hex }) => ({
+          chainId: h.chainId.toString(),
+          sessionDigest: h.sessionDigest,
+        }),
+      ),
+    );
+
+    const res = await fetch("/api/dca/strategy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        smartAccountAddress: rhinestoneAddress,
+        smartAccountProvider: authProvider,
+        ownerAddress: appKitAccount.address,
+        dcaAmountUsdc: "250000",
+        intervalSeconds: 300,
+        active: true,
+        sessionEnableSignature: enableSig,
+        sessionHashesAndChainIds,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "Failed to activate strategy");
+  }, [rhinestoneAccount, rhinestoneAddress, appKitAccount.address, authProvider, wagmiAccount.chainId, switchChainAsync]);
+
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      {showOnboarding && rhinestoneAddress && appKitAccount.address && (
+        <OnboardingGuide
+          smartAccountAddress={rhinestoneAddress}
+          smartAccountProvider={authProvider}
+          ownerAddress={appKitAccount.address}
+          onComplete={completeOnboarding}
+          onPositionCreated={loadPosition}
+          onActivateStrategy={handleActivateOnboardingStrategy}
+        />
+      )}
       <div className="mx-auto w-full max-w-xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -1134,6 +1213,7 @@ function PrivyHome() {
   const { wallets } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
   const wagmiAccount = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const {
     rhinestoneAccount,
     accountAddress: rhinestoneAddress,
@@ -1147,6 +1227,11 @@ function PrivyHome() {
 
   const isConnected = ready && authenticated && !!wagmiAccount.address;
   usePostHogIdentify(wagmiAccount.address, { auth_provider: "privy" });
+
+  const { showOnboarding, completeOnboarding } = useOnboardingStatus(
+    rhinestoneAddress ?? undefined,
+    authProvider,
+  );
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -1206,8 +1291,72 @@ function PrivyHome() {
     }
   }, [rhinestoneAddress, loadPosition]);
 
+  const handleActivateOnboardingStrategy = useCallback(async () => {
+    if (!rhinestoneAccount || !rhinestoneAddress || !wagmiAccount.address) {
+      throw new Error("Account not ready");
+    }
+
+    if (wagmiAccount.chainId !== activeNetwork.chainId) {
+      try {
+        await switchChainAsync({ chainId: activeNetwork.chainId });
+      } catch {
+        // Embedded wallets may not support chain switching
+      }
+    }
+
+    const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+    if (!backendSignerAddress) throw new Error("Backend signer address not configured");
+
+    const session = buildDcaSession({ backendSigner: backendSignerAddress as Address });
+    const sessionDetails = await rhinestoneAccount.experimental_getSessionDetails([session]);
+    const enableSig: Hex = await rhinestoneAccount.experimental_signEnableSession(sessionDetails);
+
+    const txResult = await rhinestoneAccount.sendTransaction({
+      chain: activeNetwork.chain,
+      calls: [experimental_enableSession(session, enableSig, sessionDetails.hashesAndChainIds, 0)],
+      sponsored: true,
+    });
+    await rhinestoneAccount.waitForExecution(txResult);
+
+    const sessionHashesAndChainIds = JSON.stringify(
+      sessionDetails.hashesAndChainIds.map(
+        (h: { chainId: bigint; sessionDigest: Hex }) => ({
+          chainId: h.chainId.toString(),
+          sessionDigest: h.sessionDigest,
+        }),
+      ),
+    );
+
+    const res = await fetch("/api/dca/strategy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        smartAccountAddress: rhinestoneAddress,
+        smartAccountProvider: authProvider,
+        ownerAddress: wagmiAccount.address,
+        dcaAmountUsdc: "250000",
+        intervalSeconds: 300,
+        active: true,
+        sessionEnableSignature: enableSig,
+        sessionHashesAndChainIds,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "Failed to activate strategy");
+  }, [rhinestoneAccount, rhinestoneAddress, wagmiAccount.address, wagmiAccount.chainId, authProvider, switchChainAsync]);
+
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      {showOnboarding && rhinestoneAddress && wagmiAccount.address && (
+        <OnboardingGuide
+          smartAccountAddress={rhinestoneAddress}
+          smartAccountProvider={authProvider}
+          ownerAddress={wagmiAccount.address}
+          onComplete={completeOnboarding}
+          onPositionCreated={loadPosition}
+          onActivateStrategy={handleActivateOnboardingStrategy}
+        />
+      )}
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -1351,6 +1500,11 @@ function ZeroDevHome() {
   } = useZeroDevSocialAccount();
   usePostHogIdentify(accountAddress ?? undefined, { auth_provider: "zerodev" });
 
+  const { showOnboarding, completeOnboarding } = useOnboardingStatus(
+    accountAddress ?? undefined,
+    "zerodev",
+  );
+
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
 
@@ -1376,8 +1530,45 @@ function ZeroDevHome() {
     }
   }, [accountAddress, loadPosition]);
 
+  const handleActivateOnboardingStrategy = useCallback(async () => {
+    if (!accountAddress) throw new Error("Account not ready");
+
+    const backendSignerAddress = process.env.NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS;
+    if (!backendSignerAddress) throw new Error("Backend signer address not configured");
+
+    const zerodevPermissionAccount = await preparePermissionAccount(
+      backendSignerAddress as `0x${string}`,
+    );
+
+    const res = await fetch("/api/dca/strategy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        smartAccountAddress: accountAddress,
+        smartAccountProvider: "zerodev",
+        ownerAddress: accountAddress,
+        dcaAmountUsdc: "250000",
+        intervalSeconds: 300,
+        active: true,
+        zerodevPermissionAccount,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "Failed to activate strategy");
+  }, [accountAddress, preparePermissionAccount]);
+
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
+      {showOnboarding && accountAddress && (
+        <OnboardingGuide
+          smartAccountAddress={accountAddress}
+          smartAccountProvider="zerodev"
+          ownerAddress={accountAddress}
+          onComplete={completeOnboarding}
+          onPositionCreated={loadPosition}
+          onActivateStrategy={handleActivateOnboardingStrategy}
+        />
+      )}
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
