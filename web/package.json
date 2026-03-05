@@ -24,6 +24,8 @@
     "next": "16.1.6",
     "openid-client": "^6.8.2",
     "pg": "^8.19.0",
+    "posthog-js": "^1.358.1",
+    "posthog-node": "^5.27.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "viem": "^2.46.3",

@@ -23,6 +23,7 @@ import {
 } from "viem";
 import { activeNetwork } from "@/lib/constants/networks";
 import { useWalletRuntime } from "@/context/wallet-provider-root";
+import { usePostHogIdentify } from "@/hooks/usePostHogIdentify";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -886,6 +887,7 @@ function ReownHome() {
   } = useSmartAccount();
 
   const isConnected = appKitAccount.isConnected && !!appKitAccount.address;
+  usePostHogIdentify(appKitAccount.address, { auth_provider: "reown" });
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -1091,6 +1093,7 @@ function PrivyHome() {
   } = useSmartAccount();
 
   const isConnected = ready && authenticated && !!wagmiAccount.address;
+  usePostHogIdentify(wagmiAccount.address, { auth_provider: "privy" });
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -1295,6 +1298,7 @@ function ZeroDevHome() {
     refreshOnChainBalances,
     preparePermissionAccount,
   } = useZeroDevSocialAccount();
+  usePostHogIdentify(accountAddress ?? undefined, { auth_provider: "zerodev" });
 
   const [position, setPosition] = useState<DcaPosition | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
