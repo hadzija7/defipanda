@@ -126,6 +126,42 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-3 text-base font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{children}</h2>;
 }
 
+function CopyableAddress({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(address).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="group relative flex items-center gap-2">
+      <code className="min-w-0 flex-1 break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
+        {address}
+      </code>
+      <button
+        onClick={handleCopy}
+        type="button"
+        className="shrink-0 rounded-lg border border-zinc-200 bg-white p-2 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+        title="Copy address"
+      >
+        {copied ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Withdraw modal
 // ---------------------------------------------------------------------------
@@ -405,9 +441,23 @@ function OnChainBalancesView({
   onWithdraw,
 }: {
   balances: OnChainBalances | null;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   onWithdraw?: () => void;
 }) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        onRefresh(),
+        new Promise((r) => setTimeout(r, 500)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   if (!balances) {
     return (
       <div className="flex items-center gap-2 py-4">
@@ -426,24 +476,18 @@ function OnChainBalancesView({
         <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
           {balances.chainName} balances
         </span>
-        <div className="flex items-center gap-1">
-          {onWithdraw && (usdcNum > 0 || wethNum > 0) && (
-            <button
-              onClick={onWithdraw}
-              type="button"
-              className="rounded px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              Withdraw
-            </button>
-          )}
-          <button
-            onClick={onRefresh}
-            type="button"
-            className="rounded px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            Refresh
-          </button>
-        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          type="button"
+          className={`rounded p-1 hover:bg-zinc-100 disabled:opacity-70 dark:hover:bg-zinc-800 ${refreshing ? "animate-spin text-amber-500" : "text-zinc-400 dark:text-zinc-500"}`}
+          title="Refresh balances"
+        >
+          <svg className="h-4 w-4 -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
+        </button>
       </div>
 
       <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-800">
@@ -472,12 +516,23 @@ function OnChainBalancesView({
         </div>
       )}
 
-      <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-        Get testnet USDC from the{" "}
-        <a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-          Circle faucet
-        </a>
-        {" "}(select Ethereum Sepolia).
+      <div className="flex items-center gap-2">
+        <div className="flex-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+          Get testnet USDC from the{" "}
+          <a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+            Circle faucet
+          </a>
+          {" "}(Ethereum Sepolia).
+        </div>
+        {onWithdraw && (usdcNum > 0 || wethNum > 0) && (
+          <button
+            onClick={onWithdraw}
+            type="button"
+            className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            Withdraw
+          </button>
+        )}
       </div>
 
     </div>
@@ -884,6 +939,7 @@ function ReownHome() {
     isLoading: rhinestoneLoading,
     error: rhinestoneError,
     refreshPortfolio,
+    refreshOnChainBalances,
   } = useSmartAccount();
 
   const isConnected = appKitAccount.isConnected && !!appKitAccount.address;
@@ -977,9 +1033,7 @@ function ReownHome() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-sm text-zinc-500 dark:text-zinc-400">Address</span>
-                    <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
-                      {rhinestoneAddress}
-                    </code>
+                    <CopyableAddress address={rhinestoneAddress} />
                   </div>
                   {wagmiAccount.chainId && (
                     <div className="text-sm text-zinc-400 dark:text-zinc-500">
@@ -996,7 +1050,7 @@ function ReownHome() {
                 <SectionTitle>Balances</SectionTitle>
                 <OnChainBalancesView
                   balances={onChainBalances}
-                  onRefresh={refreshPortfolio}
+                  onRefresh={refreshOnChainBalances}
                   onWithdraw={() => setShowWithdraw(true)}
                 />
               </Card>
@@ -1007,7 +1061,7 @@ function ReownHome() {
                 rhinestoneAccount={rhinestoneAccount}
                 onChainBalances={onChainBalances}
                 onClose={() => setShowWithdraw(false)}
-                onSuccess={refreshPortfolio}
+                onSuccess={refreshOnChainBalances}
               />
             )}
 
@@ -1028,9 +1082,7 @@ function ReownHome() {
                 </p>
                 <div className="mt-3 flex flex-col gap-1">
                   <span className="text-sm text-zinc-500 dark:text-zinc-400">Send USDC to:</span>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
-                    {rhinestoneAddress}
-                  </code>
+                  <CopyableAddress address={rhinestoneAddress} />
                 </div>
                 <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                   Get testnet USDC from the{" "}
@@ -1090,6 +1142,7 @@ function PrivyHome() {
     isLoading: rhinestoneLoading,
     error: rhinestoneError,
     refreshPortfolio,
+    refreshOnChainBalances,
   } = useSmartAccount();
 
   const isConnected = ready && authenticated && !!wagmiAccount.address;
@@ -1220,9 +1273,7 @@ function PrivyHome() {
                       Privy signer + Rhinestone ERC-7579
                     </span>
                   </div>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
-                    {rhinestoneAddress}
-                  </code>
+                  <CopyableAddress address={rhinestoneAddress} />
                 </div>
               ) : null}
             </Card>
@@ -1232,7 +1283,7 @@ function PrivyHome() {
                 <SectionTitle>Balances</SectionTitle>
                 <OnChainBalancesView
                   balances={onChainBalances}
-                  onRefresh={refreshPortfolio}
+                  onRefresh={refreshOnChainBalances}
                   onWithdraw={() => setShowWithdraw(true)}
                 />
               </Card>
@@ -1243,7 +1294,7 @@ function PrivyHome() {
                 rhinestoneAccount={rhinestoneAccount}
                 onChainBalances={onChainBalances}
                 onClose={() => setShowWithdraw(false)}
-                onSuccess={refreshPortfolio}
+                onSuccess={refreshOnChainBalances}
               />
             )}
 
@@ -1384,9 +1435,7 @@ function ZeroDevHome() {
                   <span className="text-sm text-zinc-500 dark:text-zinc-400">
                     Address
                   </span>
-                  <code className="break-all rounded-lg bg-zinc-100 px-3 py-2 text-sm font-mono dark:bg-zinc-800">
-                    {accountAddress}
-                  </code>
+                  <CopyableAddress address={accountAddress} />
                 </div>
               </div>
             ) : (
