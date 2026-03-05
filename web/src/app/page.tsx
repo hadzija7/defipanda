@@ -58,9 +58,21 @@ function Hero() {
         <div className="animate-blob-1 absolute -right-32 -top-32 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-rose-200/70 via-pink-200/50 to-transparent blur-3xl" />
         <div className="animate-blob-2 absolute -left-20 top-20 h-[500px] w-[500px] rounded-full bg-gradient-to-br from-amber-200/60 via-orange-200/40 to-transparent blur-3xl" />
         <div className="animate-blob-2 absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-gradient-to-tl from-amber-100/50 via-yellow-100/30 to-transparent blur-3xl" />
+
       </div>
 
       <div className="relative z-10 mx-auto max-w-4xl text-center">
+        {/* Panda mascot – in-flow so it always sits above the title */}
+        <img
+          src="/pandaImage.png"
+          alt=""
+          aria-hidden="true"
+          className="mx-auto -mb-12 w-[min(55vw,400px)] opacity-[0.45] select-none sm:-mb-24"
+          style={{
+            maskImage: "radial-gradient(ellipse 55% 55% at 50% 45%, black 40%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 55% 55% at 50% 45%, black 40%, transparent 80%)",
+          }}
+        />
         <h1 className="animate-fade-in-up text-[clamp(2.8rem,7vw,5.5rem)] font-extrabold leading-[1.05] tracking-tight text-zinc-900">
           Automate your<br />
           DCA strategy
