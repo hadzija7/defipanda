@@ -954,7 +954,10 @@ function ReownHome() {
   } = useSmartAccount();
 
   const isConnected = appKitAccount.isConnected && !!appKitAccount.address;
-  usePostHogIdentify(appKitAccount.address, { auth_provider: "reown" });
+  usePostHogIdentify(rhinestoneAddress ?? undefined, {
+    auth_provider: "reown",
+    eoa_address: appKitAccount.address ?? "",
+  });
 
   const { showOnboarding, completeOnboarding } = useOnboardingStatus(
     rhinestoneAddress ?? undefined,
@@ -1203,7 +1206,7 @@ function ReownHome() {
 
 function PrivyHome() {
   const { authProvider } = useWalletRuntime();
-  const { ready, authenticated, login, logout } = usePrivy();
+  const { ready, authenticated, login, logout, user } = usePrivy();
   const { wallets } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
   const wagmiAccount = useAccount();
@@ -1220,7 +1223,11 @@ function PrivyHome() {
   } = useSmartAccount();
 
   const isConnected = ready && authenticated && !!wagmiAccount.address;
-  usePostHogIdentify(wagmiAccount.address, { auth_provider: "privy" });
+  usePostHogIdentify(rhinestoneAddress ?? undefined, {
+    auth_provider: "privy",
+    email: user?.email?.address ?? "",
+    eoa_address: wagmiAccount.address ?? "",
+  });
 
   const { showOnboarding, completeOnboarding } = useOnboardingStatus(
     rhinestoneAddress ?? undefined,
