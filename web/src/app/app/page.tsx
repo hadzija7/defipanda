@@ -28,6 +28,7 @@ import {
   OnboardingGuide,
   useOnboardingStatus,
 } from "@/components/OnboardingGuide";
+import { WelcomeCard } from "@/components/WelcomeCard";
 
 // ---------------------------------------------------------------------------
 // Types (matches DcaPosition from backend)
@@ -1064,23 +1065,16 @@ function ReownHome() {
               Automated DCA on Chainlink CRE
             </p>
           </div>
-          <appkit-button />
+          {isConnected && <appkit-button />}
         </div>
 
         {/* Not connected */}
         {!isConnected && (
-          <Card className="text-center">
-            <div className="flex flex-col items-center gap-3 py-8">
-              <h2 className="text-xl font-semibold">Connect your wallet</h2>
-              <p className="max-w-xs text-base text-zinc-500 dark:text-zinc-400">
-                Sign in with your social account or connect a wallet to start
-                your automated DCA strategy.
-              </p>
-              <div className="mt-2">
-                <appkit-button />
-              </div>
+          <WelcomeCard description="Sign in with your social account or connect a wallet — we'll set up a smart account so you can automate your investments effortlessly.">
+            <div className="mt-1">
+              <appkit-button />
             </div>
-          </Card>
+          </WelcomeCard>
         )}
 
         {/* Connected */}
@@ -1368,7 +1362,7 @@ function PrivyHome() {
               Automated DCA on Chainlink CRE
             </p>
           </div>
-          {isConnected ? (
+          {isConnected && (
             <button
               onClick={() => void logout()}
               type="button"
@@ -1376,27 +1370,19 @@ function PrivyHome() {
             >
               Logout
             </button>
-          ) : (
-            <button
-              onClick={() => login()}
-              type="button"
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400"
-            >
-              Login with Privy
-            </button>
           )}
         </div>
 
         {!isConnected && (
-          <Card className="text-center">
-            <div className="flex flex-col items-center gap-3 py-8">
-              <h2 className="text-xl font-semibold">Connect your wallet</h2>
-              <p className="max-w-xs text-base text-zinc-500 dark:text-zinc-400">
-                Sign in with Privy to initialize your smart account and manage
-                automated DCA.
-              </p>
-            </div>
-          </Card>
+          <WelcomeCard description="Sign in with Privy to create your smart account, no seed phrases, no hassle. Start automating your DCA in seconds.">
+            <button
+              onClick={() => login()}
+              type="button"
+              className="animate-gentle-pulse rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-amber-400 hover:shadow-lg"
+            >
+              Get Started!
+            </button>
+          </WelcomeCard>
         )}
 
         {isConnected && (
@@ -1580,7 +1566,7 @@ function ZeroDevHome() {
               Automated DCA on Chainlink CRE
             </p>
           </div>
-          {isAuthorized ? (
+          {isAuthorized && (
             <button
               onClick={disconnect}
               type="button"
@@ -1588,19 +1574,24 @@ function ZeroDevHome() {
             >
               Logout
             </button>
-          ) : (
+          )}
+        </div>
+
+        {!isAuthorized && !isLoading && (
+          <WelcomeCard description="Log in with your Google or social account — no seed phrases, no wallets to install. We handle the crypto magic behind the scenes.">
             <button
               onClick={login}
               disabled={isLoading}
               type="button"
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-60"
+              className="animate-gentle-pulse rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-amber-400 hover:shadow-lg disabled:opacity-60"
             >
-              {isLoading ? "Connecting..." : "Login with ZeroDev"}
+              Get Started
             </button>
-          )}
-        </div>
+          </WelcomeCard>
+        )}
 
         <div className="flex flex-col gap-4">
+          {(isAuthorized || isLoading) && (
           <Card>
             <SectionTitle>Smart Account</SectionTitle>
             {isLoading ? (
@@ -1629,12 +1620,9 @@ function ZeroDevHome() {
                   <CopyableAddress address={accountAddress} />
                 </div>
               </div>
-            ) : (
-              <div className="rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                Use &quot;Login with ZeroDev&quot; to connect your social smart account.
-              </div>
-            )}
+            ) : null}
           </Card>
+          )}
 
           {accountAddress && (
             <Card>
