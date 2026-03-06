@@ -153,13 +153,14 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
     const body = Buffer.from(bodyBytes).toString("base64");
 
     const req = {
-      url: `${backendUrlValue}/api/dca/execute`,
+      url: `${backendUrlValue}/api/dca/trigger`,
       method: "POST" as const,
       body,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authTokenValue}`,
       },
+      timeout: "10s",
       cacheSettings: {
         store: true,
         maxAge: "10s",
