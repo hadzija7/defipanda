@@ -17,8 +17,6 @@ import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
 import { getDuePositions, markExecuted } from "@/lib/dca/store";
 import type { CREExecutionRequest, ExecutionResponse, ExecutionResult } from "./types";
 
-const MAX_CONCURRENT_EXECUTIONS = 5;
-
 function getRequiredEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
@@ -29,24 +27,6 @@ function getRequiredEnv(key: string): string {
 
 function getBundlerRpcUrl(): string {
   return process.env.ZERODEV_RPC_URL || getRequiredEnv("SMART_ACCOUNT_RPC_URL");
-}
-
-async function runWithConcurrencyLimit<T>(
-  tasks: (() => Promise<T>)[],
-  limit: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-
-  async function worker() {
-    while (index < tasks.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await tasks[currentIndex]();
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
-  return results;
 }
 
 async function executeOneZeroDevPosition(
@@ -215,14 +195,14 @@ export async function executeZeroDevDca(
   };
 
   console.log(
-    `[zerodev-executor] Executing ${duePositions.length} positions (concurrency=${MAX_CONCURRENT_EXECUTIONS})`,
+    `[zerodev-executor] Executing ${duePositions.length} positions sequentially`,
   );
 
-  const tasks = duePositions.map(
-    (position) => () => executeOneZeroDevPosition(position, ctx),
-  );
-
-  const results = await runWithConcurrencyLimit(tasks, MAX_CONCURRENT_EXECUTIONS);
+  const results: ExecutionResult[] = [];
+  for (const position of duePositions) {
+    const result = await executeOneZeroDevPosition(position, ctx);
+    results.push(result);
+  }
 
   return {
     ok: true,

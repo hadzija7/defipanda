@@ -28,7 +28,6 @@ const orchestratorMod = require("@rhinestone/sdk/dist/src/orchestrator") as {
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FILLED", "FAILED", "EXPIRED"]);
 const INTENT_POLL_INTERVAL_MS = 3_000;
 const INTENT_POLL_MAX_MS = 120_000;
-const MAX_CONCURRENT_EXECUTIONS = 5;
 
 async function waitForIntentFill(
   apiKey: string,
@@ -247,24 +246,6 @@ async function executeOnePosition(
   }
 }
 
-async function runWithConcurrencyLimit<T>(
-  tasks: (() => Promise<T>)[],
-  limit: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-
-  async function worker() {
-    while (index < tasks.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await tasks[currentIndex]();
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
-  return results;
-}
-
 export async function executeRhinestoneDca(
   body: CREExecutionRequest,
 ): Promise<ExecutionResponse> {
@@ -287,9 +268,10 @@ export async function executeRhinestoneDca(
     endpointUrl: "https://v1.orchestrator.rhinestone.dev",
   });
 
+  const rpcUrl = process.env.NEXT_PUBLIC_PRIVY_RPC_URL || undefined;
   const publicClient = createPublicClient({
     chain: activeNetwork.chain,
-    transport: http(),
+    transport: http(rpcUrl),
   });
 
   const ethPriceRaw = BigInt(body.consensusPrice);
@@ -307,14 +289,14 @@ export async function executeRhinestoneDca(
   };
 
   console.log(
-    `[rhinestone-executor] Executing ${duePositions.length} positions (concurrency=${MAX_CONCURRENT_EXECUTIONS})`,
+    `[rhinestone-executor] Executing ${duePositions.length} positions sequentially`,
   );
 
-  const tasks = duePositions.map(
-    (position) => () => executeOnePosition(position, ctx),
-  );
-
-  const results = await runWithConcurrencyLimit(tasks, MAX_CONCURRENT_EXECUTIONS);
+  const results: ExecutionResult[] = [];
+  for (const position of duePositions) {
+    const result = await executeOnePosition(position, ctx);
+    results.push(result);
+  }
 
   return {
     ok: true,
