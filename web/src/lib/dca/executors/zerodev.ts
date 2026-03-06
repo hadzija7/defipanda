@@ -52,7 +52,8 @@ async function runWithConcurrencyLimit<T>(
 async function executeOneZeroDevPosition(
   position: Awaited<ReturnType<typeof getDuePositions>>[number],
   ctx: {
-    publicClient: ReturnType<typeof createPublicClient>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    publicClient: any;
     sudoValidator: Awaited<ReturnType<typeof signerToEcdsaValidator>>;
     permissionSigner: Awaited<ReturnType<typeof toECDSASigner>>;
     bundlerRpcUrl: string;
