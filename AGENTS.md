@@ -42,3 +42,26 @@
 - `cre/.env` contains real secrets (private keys, tokens) and is gitignored. See `cre/.env.example` for the required variables.
 - `cre/secrets.yaml` is a structural mapping (secret name → env var name) with no actual values. It is safe to commit and required by the CRE CLI.
 - `.env.docker` is the template for Docker Compose. Copy to `.env` and fill in real values. The `.env` file is gitignored.
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service | How to run | Notes |
+|---------|-----------|-------|
+| **Web (Next.js)** | `cd web && pnpm dev` | Runs on port 3000. Needs PostgreSQL + `web/.env.local`. |
+| **PostgreSQL** | `sudo docker run -d --name defipanda-postgres -e POSTGRES_DB=defipanda -e POSTGRES_USER=defipanda -e POSTGRES_PASSWORD=devpassword123 -p 5432:5432 postgres:16-alpine` | Schema auto-created on first request by `web/src/lib/db/postgres.ts`. |
+| **CRE workflow** | Optional. Requires Bun + CRE CLI + secrets. Not needed for web dev. | See `cre/.env.example`. |
+
+### Startup caveats
+
+- **Docker daemon**: The VM runs inside a Firecracker container. Docker needs `fuse-overlayfs` storage driver and `iptables-legacy`. Start with `sudo dockerd &>/dev/null &`.
+- **pnpm build scripts**: pnpm 10 blocks postinstall scripts by default. The `pnpm.onlyBuiltDependencies` field in `web/package.json` lists packages that must be allowed (esbuild, sharp, unrs-resolver, etc.). Without it, `next build` / `next dev` will fail.
+- **`web/.env.local`**: Copy from `web/.env.example` and set `DATABASE_URL=postgresql://defipanda:devpassword123@localhost:5432/defipanda`. The schema is auto-migrated on first DB query.
+- **Privy App ID**: The `/app` route requires a valid `NEXT_PUBLIC_PRIVY_APP_ID`. Without it, the auth screen shows a runtime error. The landing page (`/`) and all API routes work without it.
+
+### Lint / Test / Build
+
+- Lint: `cd web && pnpm lint` — has pre-existing warnings + 1 error in `OnboardingGuide.tsx` (not blocking).
+- Test: `cd web && pnpm test` — runs vitest (23 unit tests, all pass without DB or secrets).
+- Build: `cd web && pnpm build` — produces standalone Next.js output.
