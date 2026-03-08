@@ -57,8 +57,9 @@
 
 - **Docker daemon**: The VM runs inside a Firecracker container. Docker needs `fuse-overlayfs` storage driver and `iptables-legacy`. Start with `sudo dockerd &>/dev/null &`.
 - **pnpm build scripts**: pnpm 10 blocks postinstall scripts by default. The `pnpm.onlyBuiltDependencies` field in `web/package.json` lists packages that must be allowed (esbuild, sharp, unrs-resolver, etc.). Without it, `next build` / `next dev` will fail.
-- **`web/.env.local`**: Copy from `web/.env.example` and set `DATABASE_URL=postgresql://defipanda:devpassword123@localhost:5432/defipanda`. The schema is auto-migrated on first DB query.
+- **`web/.env.local`**: Copy from `web/.env.example` and set `DATABASE_URL=postgresql://defipanda:devpassword123@localhost:5432/defipanda`. The schema is auto-migrated on first DB query. Secrets are injected as environment variables — use an unquoted heredoc (`<< ENVEOF`, not `<< 'ENVEOF'`) when writing `.env.local` so `${VAR}` references expand.
 - **Privy App ID**: The `/app` route requires a valid `NEXT_PUBLIC_PRIVY_APP_ID`. Without it, the auth screen shows a runtime error. The landing page (`/`) and all API routes work without it.
+- **AUTH_PROVIDER must be `privy`**: The `.env.local` must set `AUTH_PROVIDER=privy`. If unset or set to another value, the default is `reown_appkit` which requires `NEXT_PUBLIC_REOWN_PROJECT_ID`.
 
 ### Lint / Test / Build
 
