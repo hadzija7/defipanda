@@ -91,7 +91,7 @@ services:
       RHINESTONE_API_KEY: ${RHINESTONE_API_KEY:-}
 
       # CRE execution pipeline
-      CRE_BACKEND_AUTH_TOKEN: ${CRE_BACKEND_AUTH_TOKEN:-changeme-local-dev-token}
+      CRE_BACKEND_AUTH_TOKEN: ${CRE_BACKEND_AUTH_TOKEN:?Set CRE_BACKEND_AUTH_TOKEN in .env}
 
       # Backend signer
       NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS: ${NEXT_PUBLIC_BACKEND_SIGNER_ADDRESS:-}
@@ -149,7 +149,7 @@ services:
       CRE_API_KEY: ${CRE_API_KEY:-}
 
       # Secrets consumed by the DCA workflow (must match secrets.yaml)
-      BACKEND_AUTH_TOKEN_ALL: ${CRE_BACKEND_AUTH_TOKEN:-changeme-local-dev-token}
+      BACKEND_AUTH_TOKEN_ALL: ${CRE_BACKEND_AUTH_TOKEN:?Set CRE_BACKEND_AUTH_TOKEN in .env}
       BACKEND_URL_ALL: ${BACKEND_URL_ALL:-http://web:3000}
 
       # Cron configuration

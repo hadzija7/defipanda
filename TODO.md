@@ -189,6 +189,7 @@
 - [ ] Test full `docker compose up --build` flow
 - [ ] Verify CRE CLI auth works headlessly (CRE_API_KEY)
 - [ ] Verify end-to-end: cre-cron → POST /api/dca/execute → Rhinestone swap
+- [x] Harden Docker CRE auth token config to fail fast (remove insecure fallback token defaults)
 
 ## Phase 9.6 - Documentation & Repo Hygiene
 - [x] Add root `README.md` with self-hosting guide, architecture overview, and env var table

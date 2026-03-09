@@ -134,6 +134,7 @@ const token = nodeRuntime.getSecret({ id: "BACKEND_AUTH_TOKEN" }).result()
 
 For local simulation: secrets come from `.env` file or shell environment variables.
 For deployed workflows: secrets are stored in the Vault DON via `cre secrets create`.
+For Docker Compose self-hosting, `CRE_BACKEND_AUTH_TOKEN` is now fail-fast required (no default fallback token).
 
 ## Failure Handling
 
