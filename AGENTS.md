@@ -34,6 +34,8 @@
 - Web install: `cd web && pnpm install`
 - Web dev: `cd web && pnpm dev`
 - CRE workflow run: `cd cre/dca-workflow && npm run start`
+- Contracts build: `cd contracts && forge build`
+- Contracts test: `cd contracts && forge test`
 - **Docker (full stack):** `cp .env.docker .env && docker compose up --build`
 - **Docker logs:** `docker compose logs -f`
 - **Docker teardown:** `docker compose down -v`

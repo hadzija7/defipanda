@@ -2,3 +2,6 @@
 .DS_Store
 .pnpm-store/
 node_modules/
+
+# Foundry deployment artifacts
+contracts/broadcast/
