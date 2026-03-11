@@ -225,13 +225,18 @@ SmartAccount → executeDCA() → DefiPandaDCA
 - Tests: `contracts/test/DefiPandaDCA.t.sol` (33 tests)
 - Deploy script: `contracts/script/DeployDCA.s.sol`
 
-### Session Key Integration (Future)
-Current session definition targets SwapRouter02 directly. After DefiPandaDCA deployment:
+### Deployed Addresses (Sepolia)
+- **Implementation:** `0x6990c6673CD9c6B7472e0d339B6F5Ed17A80D231`
+- **Proxy (interact with this):** `0x567e39581cE86aD92Aa3A0d45D8454921dBDaEa1`
+- Both verified on [Etherscan Sepolia](https://sepolia.etherscan.io/address/0x567e39581ce86ad92aa3a0d45d8454921dbdaea1)
+
+### Session Key Integration (Active)
+Session definitions and executors now target DefiPandaDCA:
 ```
-Old: approve(USDC) → SwapRouter02, exactInputSingle() → SwapRouter02
-New: approve(USDC) → DefiPandaDCA, executeDCA() → DefiPandaDCA
+approve(USDC) → DefiPandaDCA, executeDCA() → DefiPandaDCA
 ```
-Same number of actions, same spending-limit policy, different targets.
+DefiPandaDCA internally deducts the protocol fee and forwards the swap to Uniswap V3 SwapRouter02.
+Users who had sessions granted for the old SwapRouter02 flow must re-activate DCA to grant new permissions.
 
 ## Self-Hosted Deployment (Docker Compose)
 

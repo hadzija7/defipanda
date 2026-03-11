@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { buildBackendDcaSession } from "@/lib/wallet/rhinestone-sessions";
-import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
+import { activeNetwork, defiPandaDcaAbi } from "@/lib/constants/networks";
 import { getDuePositions, markExecuted } from "@/lib/dca/store";
 import type { CREExecutionRequest, ExecutionResponse, ExecutionResult } from "./types";
 
@@ -148,28 +148,25 @@ async function executeOnePosition(
       backendSignerPrivateKey: backendPrivateKey,
       chain,
       inputTokenAddress: activeNetwork.usdc,
-      swapRouterAddress: activeNetwork.uniswapV3SwapRouter02,
+      dcaContractAddress: activeNetwork.defiPandaDCA,
     });
 
     const approveCalldata = encodeFunctionData({
       abi: erc20Abi,
       functionName: "approve",
-      args: [activeNetwork.uniswapV3SwapRouter02, amountIn],
+      args: [activeNetwork.defiPandaDCA, amountIn],
     });
 
-    const swapCalldata = encodeFunctionData({
-      abi: swapRouter02Abi,
-      functionName: "exactInputSingle",
+    const executeDcaCalldata = encodeFunctionData({
+      abi: defiPandaDcaAbi,
+      functionName: "executeDCA",
       args: [
-        {
-          tokenIn: activeNetwork.usdc,
-          tokenOut: activeNetwork.weth,
-          fee: activeNetwork.uniswapV3PoolFee,
-          recipient: position.smartAccountAddress as `0x${string}`,
-          amountIn,
-          amountOutMinimum,
-          sqrtPriceLimitX96: BigInt(0),
-        },
+        activeNetwork.usdc,
+        activeNetwork.weth,
+        amountIn,
+        activeNetwork.uniswapV3PoolFee,
+        amountOutMinimum,
+        position.smartAccountAddress as `0x${string}`,
       ],
     });
 
@@ -177,7 +174,7 @@ async function executeOnePosition(
       chain,
       calls: [
         { to: activeNetwork.usdc, value: BigInt(0), data: approveCalldata },
-        { to: activeNetwork.uniswapV3SwapRouter02, value: BigInt(0), data: swapCalldata },
+        { to: activeNetwork.defiPandaDCA, value: BigInt(0), data: executeDcaCalldata },
       ],
       signers: {
         type: "experimental_session" as const,

@@ -11,6 +11,15 @@ export const swapRouter02Abi = parseAbi([
   "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)",
 ]);
 
+export const defiPandaDcaAbi = parseAbi([
+  "function executeDCA(address tokenIn, address tokenOut, uint256 amountIn, uint24 poolFee, uint256 amountOutMinimum, address recipient) external returns (uint256 amountOut)",
+  "function feeBps() external view returns (uint16)",
+  "function maxFeeBps() external view returns (uint16)",
+  "function treasury() external view returns (address)",
+  "function swapRouter() external view returns (address)",
+  "function calculateFee(uint256 amountIn) external view returns (uint256 fee, uint256 netAmount)",
+]);
+
 export const chainlinkPriceFeedAbi = parseAbi([
   "function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
   "function decimals() external view returns (uint8)",
@@ -30,6 +39,7 @@ export type NetworkConfig = {
   wethDecimals: number;
   uniswapV3SwapRouter02: Address;
   uniswapV3PoolFee: number;
+  defiPandaDCA: Address;
   chainlinkEthUsdPriceFeed: Address;
   creChainSelectorName: string;
 };
@@ -48,6 +58,7 @@ const ETH_SEPOLIA: NetworkConfig = {
   wethDecimals: 18,
   uniswapV3SwapRouter02: "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
   uniswapV3PoolFee: 3000,
+  defiPandaDCA: "0x567e39581cE86aD92Aa3A0d45D8454921dBDaEa1",
   chainlinkEthUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
   creChainSelectorName: "ethereum-testnet-sepolia",
 };
@@ -62,6 +73,7 @@ const BASE_SEPOLIA: NetworkConfig = {
   wethDecimals: 18,
   uniswapV3SwapRouter02: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
   uniswapV3PoolFee: 3000,
+  defiPandaDCA: "0x0000000000000000000000000000000000000000", // TODO: deploy to Base Sepolia
   chainlinkEthUsdPriceFeed: "0x4aDC67D868Fb689A8A7E1c363D8f984dA6cA0891",
   creChainSelectorName: "base-testnet-sepolia",
 };

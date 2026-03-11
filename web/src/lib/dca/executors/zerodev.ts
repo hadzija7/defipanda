@@ -13,7 +13,7 @@ import { getEntryPoint, KERNEL_V3_1 } from "@zerodev/sdk/constants";
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
 import { deserializePermissionAccount } from "@zerodev/permissions";
 import { toECDSASigner } from "@zerodev/permissions/signers";
-import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
+import { activeNetwork, defiPandaDcaAbi } from "@/lib/constants/networks";
 import { getDuePositions, markExecuted } from "@/lib/dca/store";
 import type { CREExecutionRequest, ExecutionResponse, ExecutionResult } from "./types";
 
@@ -105,27 +105,24 @@ async function executeOneZeroDevPosition(
     const approveCalldata = encodeFunctionData({
       abi: erc20Abi,
       functionName: "approve",
-      args: [activeNetwork.uniswapV3SwapRouter02, amountIn],
+      args: [activeNetwork.defiPandaDCA, amountIn],
     });
-    const swapCalldata = encodeFunctionData({
-      abi: swapRouter02Abi,
-      functionName: "exactInputSingle",
+    const executeDcaCalldata = encodeFunctionData({
+      abi: defiPandaDcaAbi,
+      functionName: "executeDCA",
       args: [
-        {
-          tokenIn: activeNetwork.usdc,
-          tokenOut: activeNetwork.weth,
-          fee: activeNetwork.uniswapV3PoolFee,
-          recipient: position.smartAccountAddress as Address,
-          amountIn,
-          amountOutMinimum,
-          sqrtPriceLimitX96: BigInt(0),
-        },
+        activeNetwork.usdc,
+        activeNetwork.weth,
+        amountIn,
+        activeNetwork.uniswapV3PoolFee,
+        amountOutMinimum,
+        position.smartAccountAddress as Address,
       ],
     });
 
     const callData = await account.encodeCalls([
       { to: activeNetwork.usdc, value: BigInt(0), data: approveCalldata },
-      { to: activeNetwork.uniswapV3SwapRouter02, value: BigInt(0), data: swapCalldata },
+      { to: activeNetwork.defiPandaDCA, value: BigInt(0), data: executeDcaCalldata },
     ]);
 
     const userOpHash = await kernelClient.sendUserOperation({

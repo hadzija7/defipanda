@@ -245,9 +245,16 @@
   - `executeDCA()` pulls tokens, deducts fee, executes Uniswap V3 swap, outputs to recipient
   - Admin: setFeeBps, setTreasury, setSwapRouter, pause/unpause, rescueTokens, upgrade
   - Full test suite (33 tests), deploy script with env-based configuration
-- [ ] Deploy DefiPandaDCA to Ethereum Sepolia for testnet integration
-- [ ] Update backend executor to use DefiPandaDCA instead of direct SwapRouter02 calls
-- [ ] Update session key permissions to target DefiPandaDCA proxy address
+- [x] Deploy DefiPandaDCA to Ethereum Sepolia for testnet integration
+  - Implementation: `0x6990c6673CD9c6B7472e0d339B6F5Ed17A80D231`
+  - Proxy: `0x567e39581cE86aD92Aa3A0d45D8454921dBDaEa1`
+  - Both verified on Etherscan (Sepolia)
+- [x] Update backend executor to use DefiPandaDCA instead of direct SwapRouter02 calls
+  - Rhinestone executor: approve(DCA) + executeDCA() instead of approve(SwapRouter02) + exactInputSingle()
+  - ZeroDev executor: same pattern
+- [x] Update session key permissions to target DefiPandaDCA proxy address
+  - Session actions target DefiPandaDCA for approve + executeDCA
+  - Added `defiPandaDcaAbi` and `defiPandaDCA` address to NetworkConfig
 
 ### 11.1 - Gas Strategy Resolution
 - [ ] Contact Rhinestone re: mainnet `sponsored: true` billing model
@@ -274,10 +281,10 @@
 - [ ] End-to-end mainnet DCA test (small amounts)
 
 ### 11.5 - Monetization (V1.1)
-- [ ] Add fee calculation to executor (`feeBps` config, reduced swap amount)
-- [ ] Show fee breakdown in frontend DCA configuration UI
-- [ ] (V1.1) Expand session with `transfer(USDC)` action for fee collection
-- [ ] (V1.1) Add fee transfer call to executor + treasury address config
+- [x] Fee collection now handled on-chain by DefiPandaDCA contract (0.30% default, configurable via `setFeeBps`)
+- [ ] Show fee breakdown in frontend DCA configuration UI (read from `calculateFee()` view)
+- [ ] Add treasury balance dashboard / monitoring
+- [ ] (V1.1) Adjust fee for mainnet economics
 
 ### 11.6 - Per-Chain CRE Automation
 - [ ] Create mainnet CRE workflow config (mainnet price feed + chain selector)

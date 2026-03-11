@@ -19,7 +19,7 @@ import type { Address, Chain, Hex } from "viem";
 import { parseUnits, toFunctionSelector, getAbiItem, erc20Abi } from "viem";
 import type { Account } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { activeNetwork, swapRouter02Abi } from "@/lib/constants/networks";
+import { activeNetwork, defiPandaDcaAbi } from "@/lib/constants/networks";
 
 const DEFAULT_SPENDING_LIMIT_USDC = "1000";
 const USDC_DECIMALS = 6;
@@ -37,12 +37,12 @@ export function buildDcaSession(config: {
   backendSigner: Account | Address;
   chain?: Chain;
   inputTokenAddress?: Address;
-  swapRouterAddress?: Address;
+  dcaContractAddress?: Address;
   spendingLimit?: string;
 }): DcaSession {
   const chain = config.chain ?? activeNetwork.chain;
   const inputToken = config.inputTokenAddress ?? activeNetwork.usdc;
-  const swapRouter = config.swapRouterAddress ?? activeNetwork.uniswapV3SwapRouter02;
+  const dcaContract = config.dcaContractAddress ?? activeNetwork.defiPandaDCA;
   const spendingLimit = parseUnits(
     config.spendingLimit || DEFAULT_SPENDING_LIMIT_USDC,
     USDC_DECIMALS,
@@ -73,9 +73,9 @@ export function buildDcaSession(config: {
         ],
       },
       {
-        target: swapRouter,
+        target: dcaContract,
         selector: toFunctionSelector(
-          getAbiItem({ abi: swapRouter02Abi, name: "exactInputSingle" }),
+          getAbiItem({ abi: defiPandaDcaAbi, name: "executeDCA" }),
         ),
         policies: [
           {
@@ -96,7 +96,7 @@ export function buildBackendDcaSession(config: {
   backendSignerPrivateKey: Hex;
   chain?: Chain;
   inputTokenAddress?: Address;
-  swapRouterAddress?: Address;
+  dcaContractAddress?: Address;
 }) {
   const backendSignerAccount = privateKeyToAccount(config.backendSignerPrivateKey);
   return {
