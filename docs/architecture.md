@@ -32,6 +32,7 @@ The root layout (`app/layout.tsx`) is minimal (HTML, body, fonts, CSS). The `/ap
 ## Current Directory Map
 - `web/`: Next.js app and server-side API bridge for local CRE simulation.
 - `cre/`: CRE project files and `dca-workflow/` implementation.
+- `contracts/`: Foundry project for smart contracts (DCA receiver, protocol contracts).
 - `docs/`: project docs and architecture decisions.
 - `specs/`: evolving system specs and testing strategy.
 
@@ -189,6 +190,48 @@ After Option B is proven, explore moving signing into CRE itself:
 - Sign transactions in CRE's WASM runtime (viem noble-curves is pure JS)
 - Submit signed transactions directly via HTTP to an RPC endpoint
 - Eliminates backend from the execution hot path entirely
+
+## DefiPandaDCA Protocol Contract (Phase 11.0)
+
+A UUPS-upgradeable smart contract that acts as a fee-collecting proxy between user smart accounts and Uniswap V3.
+
+### Contract Architecture
+
+```
+SmartAccount → approve(USDC) → DefiPandaDCA
+SmartAccount → executeDCA() → DefiPandaDCA
+                               ↓
+                         transferFrom(amountIn)
+                               ↓
+                         transfer(fee → Treasury)
+                               ↓
+                         approve(netAmount → SwapRouter)
+                               ↓
+                         exactInputSingle() → SwapRouter02
+                               ↓
+                         output tokens → recipient
+```
+
+### Key Design Decisions
+- **Fee deducted from input**: User sends full amount, contract takes fee before swap
+- **Output direct to recipient**: Swap output goes directly from Uniswap to recipient (saves gas)
+- **UUPS upgradeable**: Can fix bugs and add features without redeploying
+- **ERC-7201 namespaced storage**: Safe for upgrades, no storage collision risk
+- **Configurable fee**: Owner can adjust fee (capped at maxFeeBps)
+
+### Contract Location
+- Implementation: `contracts/src/DefiPandaDCA.sol`
+- Interface: `contracts/src/interfaces/IDefiPandaDCA.sol`
+- Tests: `contracts/test/DefiPandaDCA.t.sol` (33 tests)
+- Deploy script: `contracts/script/DeployDCA.s.sol`
+
+### Session Key Integration (Future)
+Current session definition targets SwapRouter02 directly. After DefiPandaDCA deployment:
+```
+Old: approve(USDC) → SwapRouter02, exactInputSingle() → SwapRouter02
+New: approve(USDC) → DefiPandaDCA, executeDCA() → DefiPandaDCA
+```
+Same number of actions, same spending-limit policy, different targets.
 
 ## Self-Hosted Deployment (Docker Compose)
 

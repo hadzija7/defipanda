@@ -234,6 +234,21 @@
 
 > Full plan: `docs/plans/active/phase11-mainnet-launch.md`
 
+### 11.0 - Foundry Contracts (Scaffold)
+- [x] Create Foundry project in `contracts/` (forge init)
+- [x] Add OpenZeppelin Contracts v5.5.0
+- [x] Add folder structure matching cre-bootcamp prediction-market (src/, src/interfaces/, lib/)
+- [x] Add IReceiver + ReceiverTemplate (CRE report handling) and DefiPandaReceiver stub
+- [x] Create DefiPandaDCA protocol contract (UUPS upgradeable, fee-collecting swap proxy)
+  - ERC-7201 namespaced storage, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard
+  - Configurable fee (basis points) with max cap, treasury address, SwapRouter02 integration
+  - `executeDCA()` pulls tokens, deducts fee, executes Uniswap V3 swap, outputs to recipient
+  - Admin: setFeeBps, setTreasury, setSwapRouter, pause/unpause, rescueTokens, upgrade
+  - Full test suite (33 tests), deploy script with env-based configuration
+- [ ] Deploy DefiPandaDCA to Ethereum Sepolia for testnet integration
+- [ ] Update backend executor to use DefiPandaDCA instead of direct SwapRouter02 calls
+- [ ] Update session key permissions to target DefiPandaDCA proxy address
+
 ### 11.1 - Gas Strategy Resolution
 - [ ] Contact Rhinestone re: mainnet `sponsored: true` billing model
 - [ ] If unavailable: spike Pimlico ERC-20 paymaster + Rhinestone Safe interop
